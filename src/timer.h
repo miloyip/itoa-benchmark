@@ -35,6 +35,29 @@ private:
 
 #else
 
-#Error need platform implementation of timer
+#include <sys/time.h>
+
+class Timer {
+public:
+	Timer() : start_(), end_() {
+	}
+
+	void Start() {
+		gettimeofday(&start_, NULL);
+	}
+
+	void Stop() {
+		gettimeofday(&end_, NULL);
+	}
+
+	double GetElapsedMilliseconds() {
+		return (end_.tv_sec - start_.tv_sec) * 1000.0
+			+ (end_.tv_usec - start_.tv_usec) / 1000.0;
+	}
+
+private:
+  struct timeval start_;
+  struct timeval end_;
+};
 
 #endif

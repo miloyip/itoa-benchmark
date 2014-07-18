@@ -31,6 +31,7 @@ solution "benchmark"
 	location ("./" .. (_ACTION or ""))
 	language "C++"
 	flags { "ExtraWarnings" }
+	defines { "__STDC_FORMAT_MACROS=1" }
 	
 	configuration "debug"
 		defines { "DEBUG" }

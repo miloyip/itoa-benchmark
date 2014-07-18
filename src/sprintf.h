@@ -1,6 +1,7 @@
 #pragma once
-#include <cstdio>
-#include <cinttypes>
+
+#include <inttypes.h>
+#include <stdio.h>
 
 inline void u32toa_sprintf(uint32_t value, char* buffer) {
 	sprintf(buffer, "%u", value);
