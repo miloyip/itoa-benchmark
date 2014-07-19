@@ -49,7 +49,7 @@ inline void u64toa_countlut(uint64_t value, char* buffer) {
 	*buffer = '\0';
 
 	while (value >= 100) {
-		const unsigned i = (value % 100) << 1;
+		const unsigned i = static_cast<unsigned>(value % 100) << 1;
 		value /= 100;
 		*--buffer = gDigitsCountLut[i + 1];
 		*--buffer = gDigitsCountLut[i];

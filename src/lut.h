@@ -49,7 +49,7 @@ inline void u64toa_lut(uint64_t value, char* buffer) {
 	char* p = temp;
 	
 	while (value >= 100) {
-		const unsigned i = (value % 100) << 1;
+		const unsigned i = static_cast<unsigned>(value % 100) << 1;
 		value /= 100;
 		*p++ = gDigitsLut[i + 1];
 		*p++ = gDigitsLut[i];
