@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <exception>
@@ -12,9 +13,6 @@
 #include "count.h"
 #include "countlut.h"
 #include "vc.h"
-
-typedef void (*u32toa)(uint32_t, char*);
-typedef void (*i32toa)(int32_t, char*);
 
 const unsigned kIterationPerDigit = 1000000;
 
@@ -93,7 +91,7 @@ static void verify(void(*f)(T, char*), void(*g)(T, char*), const char* fname, co
 }
 
 template <typename T>
-void bench(void(*f)(T, char*), const char* fname) {
+void bench(void(*f)(T, char*), const char* type, const char* fname, FILE* fp) {
 	printf("Benchmarking %-20s ... ", fname);
 
 	char buffer[Traits<T>::kBufferSize];
@@ -119,19 +117,17 @@ void bench(void(*f)(T, char*), const char* fname) {
 			minDuration = duration;
 		if (maxDuration < duration)
 			maxDuration = duration;
-
+		fprintf(fp, "%s,%s,%d,%f\n", type, fname, digit, duration);
 		start = end;
 	}
 
 	printf("[%8.3fms, %8.3fms]\n", minDuration, maxDuration);
 }
 
-#define STRINFY(x) #x
-#define FUNC_NAME(type, f) STRINFY(type) "_" STRINFY(f)
+#define STRINGIFY(x) #x
+#define FUNC_NAME(type, f) STRINGIFY(type) "_" STRINGIFY(f)
 
 #define VERIFY(type, f, g) try { verify(type##_##f, type##_##g, FUNC_NAME(type, f), FUNC_NAME(type, g)); } catch (...) {}
-
-#define BENCH(type, f) bench(type##_##f, FUNC_NAME(type, f))
 
 void Verify() {
 	VERIFY(u32toa, naive, sprintf);
@@ -173,7 +169,12 @@ void Verify() {
 	puts("");
 }
 
+#define BENCH(type, f) bench(type##_##f, STRINGIFY(type), STRINGIFY(f), fp)
+
 void Bench() {
+	FILE *fp = fopen("result.csv", "w");
+	fprintf(fp, "Type,Function,Digit,Time(ms)\n");
+
 	puts("u32toa");
 
 	BENCH(u32toa, null);
@@ -230,6 +231,8 @@ void Bench() {
 #endif
 
 	puts("");
+
+	fclose(fp);
 }
 
 int main() {
