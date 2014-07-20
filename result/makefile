@@ -1,4 +1,4 @@
-%.html: %.csv
+%.html: %.csv template.php
 	php template.php $< > $@
 
 CSVFILES = $(basename $(wildcard *.csv))

@@ -11,10 +11,30 @@ $(function() {
     var data = $.csv.toArrays(csv, {
         onParseValue: $.csv.hooks.castToScalar
     });
-    //var s = JSON.stringify(data);
-    //$("#parsed").html(s);
 
-    var chartData = {};
+    // Convert data for bar chart (summing all digits)
+    var timeData = {};	// type -> table
+    var funcRowMap;
+
+    for (var i = 1; i < data.length; i++) {
+    	var type = data[i][0];
+   		var func = data[i][1];
+   		var time = data[i][3];
+   		if (timeData[type] == null) {
+   			timeData[type] = [["Function", "Time (ms)"/*, { role: "style" }*/]];
+   			funcRowMap = {};
+   		}
+
+   		var table = timeData[type];
+   		
+   		if (funcRowMap[func] == null)
+   			funcRowMap[func] = table.push([func, 0/*, defaultColors[table.length - 1]*/]) - 1;
+   		
+   		table[funcRowMap[func]][1] += time;
+    }
+
+    // Convert data for drawing line chart per digit
+    var timeDigitData = {}; // type -> table
     var funcColumnMap;
 
     for (var i = 1; i < data.length; i++) {
@@ -23,12 +43,12 @@ $(function() {
 		var digit = data[i][2];
    		var time = data[i][3];
 
-   		if (chartData[type] == null) {
-   			chartData[type] = [["Digit"]];
+   		if (timeDigitData[type] == null) {
+   			timeDigitData[type] = [["Digit"]];
    			funcColumnMap = {};
    		}
 
-   		var table = chartData[type];
+   		var table = timeDigitData[type];
 
    		if (funcColumnMap[func] == null)
    			funcColumnMap[func] = table[0].push(func) - 1;
@@ -44,23 +64,100 @@ $(function() {
 		table[row][funcColumnMap[func]] = time;
 	}
 
-	for (var type in chartData)
-		drawChart(type, chartData[type]);
+	for (var type in timeData) {
+		var header = document.createElement("h2");
+		header.innerHTML = type;
+		$("#main").append(header);
+
+		drawTable(type, timeData[type]);
+		drawBarChart(type, timeData[type]);
+		drawDigitChart(type, timeDigitData[type]);
+	}
 });
 
-function drawChart(type, chartData) {
-	var data = google.visualization.arrayToDataTable(chartData);
+function drawTable(type, timeData) {
+	var data = google.visualization.arrayToDataTable(timeData);
+    data.addColumn('number', 'Speedup');
+    data.sort([{ column: 1, desc: true }]);
+    var formatter1 = new google.visualization.NumberFormat({ fractionDigits: 3 });
+    formatter1.format(data, 1);
+
+	var div = document.createElement("div");
+	div.className = "tablechart";
+	$("#main").append(div);
+    var table = new google.visualization.Table(div);
+    redrawTable(0);
+    table.setSelection([{ row: 0, column: null}]);
+
+    function redrawTable(selectedRow) {
+        // Compute relative time using the first row as basis
+        var basis = data.getValue(selectedRow, 1);
+        for (var rowIndex = 0; rowIndex < data.getNumberOfRows(); rowIndex++)
+            data.setValue(rowIndex, 2, basis / data.getValue(rowIndex, 1));
+
+        var formatter = new google.visualization.NumberFormat({suffix: 'x'});
+        formatter.format(data, 2); // Apply formatter to second column
+
+        table.draw(data);
+    }
+
+    google.visualization.events.addListener(table, 'select',
+    function() {
+        var selection = table.getSelection();
+        if (selection.length > 0) {
+            var item = selection[0];
+            if (item.row != null)
+                redrawTable(item.row);
+        }
+    });
+
+}
+
+function drawBarChart(type, timeData) {
+    var defaultColors = ["#3366cc","#dc3912","#ff9900","#109618","#990099","#0099c6","#dd4477","#66aa00","#b82e2e","#316395","#994499","#22aa99","#aaaa11","#6633cc","#e67300","#8b0707","#651067","#329262","#5574a6","#3b3eac","#b77322","#16d620","#b91383","#f4359e","#9c5935","#a9c413","#2a778d","#668d1c","#bea413","#0c5922","#743411"];
+
+	var data = google.visualization.arrayToDataTable(timeData);
+	data.addColumn({ type: "string", role: "style" })
+	for (var rowIndex = 0; rowIndex < data.getNumberOfRows(); rowIndex++)
+		data.setValue(rowIndex, 2, defaultColors[rowIndex]);
+
+    data.sort([{ column: 1, desc: true }]);
+	var options = { 
+		title: type,
+		chartArea: {'width': '70%', 'height': '70%'},
+		width: 800,
+		height: 300,
+		legend: { position: "none" },
+		hAxis: { title: "Time (ms)" }
+	};
+	var div = document.createElement("div");
+	div.className = "chart";
+	$("#main").append(div);
+	var chart = new google.visualization.BarChart(div);
+
+	var button = document.createElement("button");
+	$("#main").append(button);
+	google.visualization.events.addListener(chart, 'ready', function () {
+        button.href = chart.getImageURI();
+        button.innerHTML = "View PNG";
+    });
+	chart.draw(data, options);
+}
+
+function drawDigitChart(type, timeDigitData) {
+	var data = google.visualization.arrayToDataTable(timeDigitData);
+
 	var options = { 
 		title: type,
 		chartArea: {'width': '70%', 'height': '80%'},
 		hAxis: {
 			title: "Digit",
-			gridlines: { count: chartData.length - 1 },
+			gridlines: { count: timeDigitData.length - 1 },
 			maxAlternation: 1,
 			minTextSpacing: 0
 		},
 		vAxis: {
-			title: "Time (ms)",
+			title: "Time (ms) in log scale",
 			logScale: true,
 			minorGridlines: { count: 10 }
 		},
@@ -68,11 +165,12 @@ function drawChart(type, chartData) {
 		height: 600
 	};
 	var div = document.createElement("div");
-	$("#chart_div").append(div);
+	div.className = "chart";
+	$("#main").append(div);
 	var chart = new google.visualization.LineChart(div);
 /*
 	var a = document.createElement("a");
-	$("#chart_div").append(a);
+	$("#main").append(a);
 	google.visualization.events.addListener(chart, 'ready', function () {
         a.href = chart.getImageURI();
         a.innerHTML = "Download PNG";
@@ -81,432 +179,544 @@ function drawChart(type, chartData) {
 	chart.draw(data, options);
 }
 </script>
+<style type="text/css">
+body {
+	color: #333333;
+	font-family: Helvetica, arial, freesans, clean, sans-serif, 'Segoe UI Emoji', 'Segoe UI Symbol';
+	font-size: 15px;
+	font-style: normal;
+	font-variant: normal;
+	font-weight: normal;
+	line-height: 25.5px;
+}
+h1 {
+	font-size: 2em;
+	line-height: 1.7;
+	margin: 1em 0 15px;
+	padding: 0;
+	overflow: hidden;
+}
+
+h2 {
+	border-top: 1px solid #eee;
+	font-size: 1.5em;
+	line-height: 1.7;
+	margin: 1em 0 15px;
+	padding: 0;
+}
+textarea {
+	width: 800px;	
+	font-family: Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+	font-size: 13px;
+	font-style: normal;
+	font-variant: normal;
+	font-weight: normal;
+	line-height: 19px;
+}
+#container {
+	margin: 0 auto;
+	width: 800px;
+}
+.tablechart {
+	width: 560px;
+	margin: auto;
+	padding-top: 20px;
+	padding-bottom: 20px;
+}
+.chart {
+	padding-top: 20px;
+	padding-bottom: 20px;
+}
+</style>
 </head>
 <body>
+<div id="container">
 <h1>corei7920@2.67_win32_vc2013</h1>
-<div id="chart_div"></div>
-<textarea id="textInput">
+<div id="main"></div>
+<h2>Source CSV</h2>
+<textarea id="textInput" rows="5" readonly>
 Type,Function,Digit,Time(ms)
-u32toa,null,1,3.520576
-u32toa,null,2,2.349350
-u32toa,null,3,2.148973
-u32toa,null,4,2.145908
-u32toa,null,5,2.156636
-u32toa,null,6,2.143992
-u32toa,null,7,2.148590
-u32toa,null,8,2.143992
-u32toa,null,9,2.153571
-u32toa,null,10,2.997222
-u32toa,sprintf,1,145.719065
-u32toa,sprintf,2,160.234690
-u32toa,sprintf,3,178.809954
-u32toa,sprintf,4,212.473622
-u32toa,sprintf,5,235.520006
-u32toa,sprintf,6,277.306401
-u32toa,sprintf,7,308.610757
-u32toa,sprintf,8,312.069267
-u32toa,sprintf,9,319.492783
-u32toa,sprintf,10,363.356122
-u32toa,naive,1,12.354775
-u32toa,naive,2,16.824746
-u32toa,naive,3,23.296185
-u32toa,naive,4,18.484846
-u32toa,naive,5,23.957850
-u32toa,naive,6,28.348513
-u32toa,naive,7,30.006314
-u32toa,naive,8,33.587425
-u32toa,naive,9,45.253333
-u32toa,naive,10,43.144205
-u32toa,lut,1,7.527344
-u32toa,lut,2,9.863284
-u32toa,lut,3,15.235142
-u32toa,lut,4,12.963951
-u32toa,lut,5,16.414031
-u32toa,lut,6,16.951179
-u32toa,lut,7,19.065287
-u32toa,lut,8,20.822701
-u32toa,lut,9,26.667724
-u32toa,lut,10,23.844060
-u32toa,count,1,10.968996
-u32toa,count,2,15.784166
-u32toa,count,3,16.501385
-u32toa,count,4,18.413584
-u32toa,count,5,22.606935
-u32toa,count,6,27.642022
-u32toa,count,7,27.901018
-u32toa,count,8,32.526923
-u32toa,count,9,36.788088
-u32toa,count,10,43.493236
-u32toa,countlut,1,7.811243
-u32toa,countlut,2,7.115480
-u32toa,countlut,3,10.516903
-u32toa,countlut,4,14.903735
-u32toa,countlut,5,18.371056
-u32toa,countlut,6,16.713638
-u32toa,countlut,7,15.297209
-u32toa,countlut,8,19.351484
-u32toa,countlut,9,21.048365
-u32toa,countlut,10,20.012000
-u32toa,vc,1,41.122814
-u32toa,vc,2,56.365619
-u32toa,vc,3,75.569215
-u32toa,vc,4,81.750626
-u32toa,vc,5,105.093553
-u32toa,vc,6,113.276814
-u32toa,vc,7,130.590433
-u32toa,vc,8,139.027326
-u32toa,vc,9,165.030704
-u32toa,vc,10,181.662353
-i32toa,null,1,2.148973
-i32toa,null,2,2.144759
-i32toa,null,3,2.155869
-i32toa,null,4,2.149356
-i32toa,null,5,2.156252
-i32toa,null,6,2.148590
-i32toa,null,7,2.151655
-i32toa,null,8,2.151272
-i32toa,null,9,2.157019
-i32toa,null,10,2.149739
-i32toa,sprintf,1,145.907948
-i32toa,sprintf,2,161.973714
-i32toa,sprintf,3,194.332826
-i32toa,sprintf,4,205.811384
-i32toa,sprintf,5,224.929542
-i32toa,sprintf,6,287.801082
-i32toa,sprintf,7,313.755036
-i32toa,sprintf,8,301.583780
-i32toa,sprintf,9,355.124969
-i32toa,sprintf,10,404.727970
-i32toa,naive,1,11.235654
-i32toa,naive,2,13.519871
-i32toa,naive,3,16.094118
-i32toa,naive,4,22.497360
-i32toa,naive,5,22.827618
-i32toa,naive,6,27.312914
-i32toa,naive,7,31.792463
-i32toa,naive,8,40.464598
-i32toa,naive,9,39.594511
-i32toa,naive,10,53.841945
-i32toa,lut,1,11.326455
-i32toa,lut,2,9.479772
-i32toa,lut,3,12.572392
-i32toa,lut,4,17.742341
-i32toa,lut,5,18.557257
-i32toa,lut,6,21.900445
-i32toa,lut,7,24.224125
-i32toa,lut,8,21.565973
-i32toa,lut,9,25.977708
-i32toa,lut,10,27.136675
-i32toa,count,1,12.420673
-i32toa,count,2,14.269273
-i32toa,count,3,23.172434
-i32toa,count,4,22.425332
-i32toa,count,5,29.382196
-i32toa,count,6,28.840834
-i32toa,count,7,30.229295
-i32toa,count,8,37.019498
-i32toa,count,9,37.852805
-i32toa,count,10,43.672924
-i32toa,countlut,1,9.864433
-i32toa,countlut,2,8.557579
-i32toa,countlut,3,12.684266
-i32toa,countlut,4,12.191562
-i32toa,countlut,5,15.851597
-i32toa,countlut,6,17.788700
-i32toa,countlut,7,19.696301
-i32toa,countlut,8,16.784134
-i32toa,countlut,9,19.851085
-i32toa,countlut,10,19.984797
-i32toa,vc,1,13.691130
-i32toa,vc,2,18.591739
-i32toa,vc,3,20.939556
-i32toa,vc,4,31.220451
-i32toa,vc,5,36.383120
-i32toa,vc,6,51.441639
-i32toa,vc,7,67.551849
-i32toa,vc,8,69.855989
-i32toa,vc,9,85.114502
-i32toa,vc,10,88.412480
-u64toa,null,1,3.627086
-u64toa,null,2,3.310238
-u64toa,null,3,3.232846
-u64toa,null,4,3.348168
-u64toa,null,5,3.227099
-u64toa,null,6,3.218670
-u64toa,null,7,3.618657
-u64toa,null,8,3.232080
-u64toa,null,9,3.688387
-u64toa,null,10,3.426710
-u64toa,null,11,3.237061
-u64toa,null,12,3.239742
-u64toa,null,13,3.222119
-u64toa,null,14,3.349701
-u64toa,null,15,3.942402
-u64toa,null,16,3.970753
-u64toa,null,17,3.512148
-u64toa,null,18,3.218287
-u64toa,null,19,3.304108
-u64toa,null,20,3.218670
-u64toa,sprintf,1,150.675610
-u64toa,sprintf,2,182.111763
-u64toa,sprintf,3,200.517684
-u64toa,sprintf,4,231.510174
-u64toa,sprintf,5,237.604613
-u64toa,sprintf,6,258.669070
-u64toa,sprintf,7,339.437351
-u64toa,sprintf,8,338.085671
-u64toa,sprintf,9,378.871714
-u64toa,sprintf,10,374.382970
-u64toa,sprintf,11,431.226351
-u64toa,sprintf,12,438.329188
-u64toa,sprintf,13,480.791806
-u64toa,sprintf,14,512.904182
-u64toa,sprintf,15,577.772210
-u64toa,sprintf,16,583.305365
-u64toa,sprintf,17,635.309438
-u64toa,sprintf,18,659.867652
-u64toa,sprintf,19,679.411467
-u64toa,sprintf,20,740.448966
-u64toa,naive,1,29.508246
-u64toa,naive,2,35.529891
-u64toa,naive,3,53.952287
-u64toa,naive,4,61.282702
-u64toa,naive,5,69.033410
-u64toa,naive,6,90.141926
-u64toa,naive,7,99.620165
-u64toa,naive,8,125.442706
-u64toa,naive,9,131.743270
-u64toa,naive,10,157.929783
-u64toa,naive,11,157.250495
-u64toa,naive,12,176.506580
-u64toa,naive,13,185.464912
-u64toa,naive,14,209.288667
-u64toa,naive,15,223.637630
-u64toa,naive,16,262.178535
-u64toa,naive,17,275.862386
-u64toa,naive,18,308.503864
-u64toa,naive,19,322.915278
-u64toa,naive,20,334.121814
-u64toa,lut,1,9.513104
-u64toa,lut,2,11.282779
-u64toa,lut,3,22.480119
-u64toa,lut,4,28.142772
-u64toa,lut,5,38.491482
-u64toa,lut,6,37.126008
-u64toa,lut,7,46.959791
-u64toa,lut,8,53.698272
-u64toa,lut,9,75.225165
-u64toa,lut,10,69.846411
-u64toa,lut,11,82.693890
-u64toa,lut,12,82.277429
-u64toa,lut,13,97.661225
-u64toa,lut,14,109.691489
-u64toa,lut,15,123.894863
-u64toa,lut,16,117.976663
-u64toa,lut,17,130.788128
-u64toa,lut,18,129.066344
-u64toa,lut,19,158.276132
-u64toa,lut,20,157.737835
-u64toa,count,1,23.966278
-u64toa,count,2,35.975854
-u64toa,count,3,45.487425
-u64toa,count,4,57.140307
-u64toa,count,5,60.940567
-u64toa,count,6,79.866395
-u64toa,count,7,94.144480
-u64toa,count,8,103.854895
-u64toa,count,9,118.972033
-u64toa,count,10,128.962516
-u64toa,count,11,144.063180
-u64toa,count,12,154.236799
-u64toa,count,13,166.193119
-u64toa,count,14,186.968312
-u64toa,count,15,199.472891
-u64toa,count,16,223.093586
-u64toa,count,17,247.669041
-u64toa,count,18,266.229363
-u64toa,count,19,282.700097
-u64toa,count,20,305.666408
-u64toa,countlut,1,16.407518
-u64toa,countlut,2,10.420354
-u64toa,countlut,3,30.158416
-u64toa,countlut,4,25.376578
-u64toa,countlut,5,40.776849
-u64toa,countlut,6,38.545503
-u64toa,countlut,7,50.797599
-u64toa,countlut,8,58.099663
-u64toa,countlut,9,60.719885
-u64toa,countlut,10,63.289917
-u64toa,countlut,11,78.492493
-u64toa,countlut,12,71.058633
-u64toa,countlut,13,95.278543
-u64toa,countlut,14,90.038098
-u64toa,countlut,15,101.469914
-u64toa,countlut,16,106.554808
-u64toa,countlut,17,114.982123
-u64toa,countlut,18,121.816769
-u64toa,countlut,19,137.690205
-u64toa,countlut,20,144.956254
-u64toa,vc,1,33.549878
-u64toa,vc,2,45.789331
-u64toa,vc,3,67.065658
-u64toa,vc,4,85.372348
-u64toa,vc,5,110.054312
-u64toa,vc,6,124.915520
-u64toa,vc,7,139.652594
-u64toa,vc,8,155.516451
-u64toa,vc,9,189.411145
-u64toa,vc,10,203.257060
-u64toa,vc,11,205.589169
-u64toa,vc,12,226.732166
-u64toa,vc,13,252.857762
-u64toa,vc,14,259.102772
-u64toa,vc,15,287.121028
-u64toa,vc,16,303.530461
-u64toa,vc,17,326.986411
-u64toa,vc,18,346.984618
-u64toa,vc,19,369.925642
-u64toa,vc,20,398.779886
-i64toa,null,1,3.282653
-i64toa,null,2,2.961974
-i64toa,null,3,2.868873
-i64toa,null,4,2.867724
-i64toa,null,5,2.870023
-i64toa,null,6,2.861977
-i64toa,null,7,2.859295
-i64toa,null,8,2.968870
-i64toa,null,9,2.870023
-i64toa,null,10,2.962357
-i64toa,null,11,3.859646
-i64toa,null,12,2.857762
-i64toa,null,13,3.976117
-i64toa,null,14,3.964623
-i64toa,null,15,3.904472
-i64toa,null,16,3.961175
-i64toa,null,17,3.907154
-i64toa,null,18,3.791066
-i64toa,null,19,2.863893
-i64toa,null,20,2.909102
-i64toa,sprintf,1,147.260012
-i64toa,sprintf,2,182.461561
-i64toa,sprintf,3,216.174652
-i64toa,sprintf,4,262.246349
-i64toa,sprintf,5,253.865010
-i64toa,sprintf,6,322.850529
-i64toa,sprintf,7,329.360281
-i64toa,sprintf,8,356.708060
-i64toa,sprintf,9,365.063347
-i64toa,sprintf,10,391.216145
-i64toa,sprintf,11,463.520331
-i64toa,sprintf,12,457.551175
-i64toa,sprintf,13,493.571088
-i64toa,sprintf,14,521.497776
-i64toa,sprintf,15,572.009560
-i64toa,sprintf,16,605.814219
-i64toa,sprintf,17,632.056286
-i64toa,sprintf,18,675.564081
-i64toa,sprintf,19,665.374371
-i64toa,sprintf,20,667.388099
-i64toa,naive,1,33.936456
-i64toa,naive,2,34.244109
-i64toa,naive,3,44.562550
-i64toa,naive,4,59.708806
-i64toa,naive,5,75.084174
-i64toa,naive,6,87.905600
-i64toa,naive,7,93.343356
-i64toa,naive,8,107.538301
-i64toa,naive,9,122.647394
-i64toa,naive,10,128.805050
-i64toa,naive,11,155.390018
-i64toa,naive,12,162.649555
-i64toa,naive,13,200.433396
-i64toa,naive,14,199.438792
-i64toa,naive,15,216.701455
-i64toa,naive,16,236.161365
-i64toa,naive,17,263.337119
-i64toa,naive,18,287.136736
-i64toa,naive,19,300.902576
-i64toa,naive,20,304.644601
-i64toa,lut,1,12.181983
-i64toa,lut,2,14.118703
-i64toa,lut,3,26.342447
-i64toa,lut,4,27.047789
-i64toa,lut,5,37.759321
-i64toa,lut,6,43.579057
-i64toa,lut,7,51.940091
-i64toa,lut,8,58.538729
-i64toa,lut,9,65.393681
-i64toa,lut,10,71.541759
-i64toa,lut,11,96.671985
-i64toa,lut,12,96.128707
-i64toa,lut,13,99.459251
-i64toa,lut,14,100.850011
-i64toa,lut,15,114.824274
-i64toa,lut,16,118.724915
-i64toa,lut,17,129.397368
-i64toa,lut,18,135.949648
-i64toa,lut,19,149.004017
-i64toa,lut,20,145.632095
-i64toa,count,1,24.626027
-i64toa,count,2,32.757183
-i64toa,count,3,41.745400
-i64toa,count,4,53.115532
-i64toa,count,5,65.737348
-i64toa,count,6,81.306962
-i64toa,count,7,85.333652
-i64toa,count,8,96.819872
-i64toa,count,9,115.610839
-i64toa,count,10,122.469239
-i64toa,count,11,133.524821
-i64toa,count,12,148.351930
-i64toa,count,13,162.503582
-i64toa,count,14,181.330563
-i64toa,count,15,191.620270
-i64toa,count,16,213.509604
-i64toa,count,17,240.259700
-i64toa,count,18,258.466777
-i64toa,count,19,273.596559
-i64toa,count,20,281.425042
-i64toa,countlut,1,17.292164
-i64toa,countlut,2,13.826758
-i64toa,countlut,3,21.587045
-i64toa,countlut,4,21.980902
-i64toa,countlut,5,34.550995
-i64toa,countlut,6,34.718040
-i64toa,countlut,7,44.921160
-i64toa,countlut,8,45.152953
-i64toa,countlut,9,61.481163
-i64toa,countlut,10,60.347483
-i64toa,countlut,11,77.171463
-i64toa,countlut,12,73.199943
-i64toa,countlut,13,88.566881
-i64toa,countlut,14,87.452741
-i64toa,countlut,15,101.241952
-i64toa,countlut,16,101.019354
-i64toa,countlut,17,111.552349
-i64toa,countlut,18,115.010092
-i64toa,countlut,19,127.057980
-i64toa,countlut,20,128.137638
-i64toa,vc,1,31.792463
-i64toa,vc,2,46.882016
-i64toa,vc,3,59.972016
-i64toa,vc,4,75.683388
-i64toa,vc,5,89.141959
-i64toa,vc,6,115.151850
-i64toa,vc,7,123.780691
-i64toa,vc,8,137.839625
-i64toa,vc,9,160.619735
-i64toa,vc,10,168.645530
-i64toa,vc,11,185.737700
-i64toa,vc,12,227.162038
-i64toa,vc,13,232.907064
-i64toa,vc,14,279.790995
-i64toa,vc,15,282.203178
-i64toa,vc,16,303.805931
-i64toa,vc,17,294.242637
-i64toa,vc,18,307.267122
-i64toa,vc,19,355.046811
-i64toa,vc,20,338.273787
+u32toa,null,1,3.097985
+u32toa,null,2,3.111011
+u32toa,null,3,3.112544
+u32toa,null,4,3.134382
+u32toa,null,5,3.792598
+u32toa,null,6,3.776124
+u32toa,null,7,3.733979
+u32toa,null,8,3.410618
+u32toa,null,9,2.617923
+u32toa,null,10,2.504134
+u32toa,sprintf,1,145.699142
+u32toa,sprintf,2,158.807533
+u32toa,sprintf,3,193.525572
+u32toa,sprintf,4,207.975682
+u32toa,sprintf,5,240.750872
+u32toa,sprintf,6,278.596398
+u32toa,sprintf,7,288.987634
+u32toa,sprintf,8,310.453610
+u32toa,sprintf,9,355.905021
+u32toa,sprintf,10,367.835671
+u32toa,naive,1,9.782827
+u32toa,naive,2,13.127164
+u32toa,naive,3,15.405634
+u32toa,naive,4,19.657988
+u32toa,naive,5,31.768326
+u32toa,naive,6,28.837003
+u32toa,naive,7,28.539311
+u32toa,naive,8,33.381684
+u32toa,naive,9,39.414440
+u32toa,naive,10,41.000979
+u32toa,lut,1,7.529260
+u32toa,lut,2,10.046037
+u32toa,lut,3,12.281980
+u32toa,lut,4,12.598445
+u32toa,lut,5,16.652338
+u32toa,lut,6,16.825512
+u32toa,lut,7,21.279009
+u32toa,lut,8,22.542570
+u32toa,lut,9,26.570409
+u32toa,lut,10,24.493848
+u32toa,count,1,12.169340
+u32toa,count,2,14.589569
+u32toa,count,3,17.642727
+u32toa,count,4,21.914620
+u32toa,count,5,23.418403
+u32toa,count,6,26.298770
+u32toa,count,7,27.984923
+u32toa,count,8,32.698948
+u32toa,count,9,34.300812
+u32toa,count,10,38.069656
+u32toa,countlut,1,7.807795
+u32toa,countlut,2,7.125058
+u32toa,countlut,3,11.232206
+u32toa,countlut,4,14.948944
+u32toa,countlut,5,16.576478
+u32toa,countlut,6,16.145074
+u32toa,countlut,7,15.920944
+u32toa,countlut,8,15.559269
+u32toa,countlut,9,16.874936
+u32toa,countlut,10,18.192901
+u32toa,branchlut,1,6.489063
+u32toa,branchlut,2,7.709330
+u32toa,branchlut,3,8.649913
+u32toa,branchlut,4,7.967177
+u32toa,branchlut,5,13.179269
+u32toa,branchlut,6,14.972698
+u32toa,branchlut,7,13.970048
+u32toa,branchlut,8,14.759295
+u32toa,branchlut,9,16.853481
+u32toa,branchlut,10,17.192550
+u32toa,vc,1,32.990126
+u32toa,vc,2,47.646742
+u32toa,vc,3,68.003942
+u32toa,vc,4,79.697818
+u32toa,vc,5,93.973604
+u32toa,vc,6,114.974461
+u32toa,vc,7,129.736821
+u32toa,vc,8,149.164165
+u32toa,vc,9,156.483086
+u32toa,vc,10,179.313769
+i32toa,null,1,3.319817
+i32toa,null,2,3.004501
+i32toa,null,3,2.502985
+i32toa,null,4,2.515628
+i32toa,null,5,2.581526
+i32toa,null,6,2.507965
+i32toa,null,7,2.527505
+i32toa,null,8,3.237444
+i32toa,null,9,2.507965
+i32toa,null,10,2.512180
+i32toa,sprintf,1,140.079783
+i32toa,sprintf,2,154.162471
+i32toa,sprintf,3,190.915695
+i32toa,sprintf,4,210.679810
+i32toa,sprintf,5,241.195686
+i32toa,sprintf,6,272.372077
+i32toa,sprintf,7,309.706508
+i32toa,sprintf,8,324.578826
+i32toa,sprintf,9,338.250800
+i32toa,sprintf,10,377.285175
+i32toa,naive,1,11.308831
+i32toa,naive,2,14.710638
+i32toa,naive,3,16.461539
+i32toa,naive,4,19.861047
+i32toa,naive,5,24.000760
+i32toa,naive,6,27.377663
+i32toa,naive,7,35.595023
+i32toa,naive,8,35.571652
+i32toa,naive,9,36.108800
+i32toa,naive,10,40.309048
+i32toa,lut,1,9.509656
+i32toa,lut,2,9.627659
+i32toa,lut,3,11.611887
+i32toa,lut,4,14.352412
+i32toa,lut,5,18.195200
+i32toa,lut,6,19.148809
+i32toa,lut,7,22.245644
+i32toa,lut,8,24.231404
+i32toa,lut,9,28.856543
+i32toa,lut,10,25.832119
+i32toa,count,1,13.343632
+i32toa,count,2,14.144755
+i32toa,count,3,17.805174
+i32toa,count,4,21.806578
+i32toa,count,5,23.825287
+i32toa,count,6,26.948558
+i32toa,count,7,31.385963
+i32toa,count,8,36.364347
+i32toa,count,9,36.602270
+i32toa,count,10,41.900567
+i32toa,countlut,1,12.127962
+i32toa,countlut,2,14.045525
+i32toa,countlut,3,15.932437
+i32toa,countlut,4,15.979179
+i32toa,countlut,5,16.415947
+i32toa,countlut,6,16.371121
+i32toa,countlut,7,19.020844
+i32toa,countlut,8,21.197019
+i32toa,countlut,9,21.452949
+i32toa,countlut,10,22.287405
+i32toa,branchlut,1,8.619263
+i32toa,branchlut,2,12.462051
+i32toa,branchlut,3,9.901980
+i32toa,branchlut,4,9.860602
+i32toa,branchlut,5,14.146671
+i32toa,branchlut,6,16.354646
+i32toa,branchlut,7,17.630467
+i32toa,branchlut,8,17.751919
+i32toa,branchlut,9,18.954562
+i32toa,branchlut,10,19.478300
+i32toa,vc,1,14.094566
+i32toa,vc,2,17.335074
+i32toa,vc,3,21.957531
+i32toa,vc,4,30.989807
+i32toa,vc,5,38.055480
+i32toa,vc,6,48.962026
+i32toa,vc,7,54.469511
+i32toa,vc,8,69.230339
+i32toa,vc,9,74.767709
+i32toa,vc,10,84.343263
+u64toa,null,1,2.966954
+u64toa,null,2,2.963889
+u64toa,null,3,2.873471
+u64toa,null,4,2.861977
+u64toa,null,5,2.865425
+u64toa,null,6,3.100666
+u64toa,null,7,3.826697
+u64toa,null,8,3.976500
+u64toa,null,9,3.489926
+u64toa,null,10,2.861977
+u64toa,null,11,2.867724
+u64toa,null,12,2.870023
+u64toa,null,13,2.873088
+u64toa,null,14,2.876536
+u64toa,null,15,3.691069
+u64toa,null,16,2.863893
+u64toa,null,17,2.856613
+u64toa,null,18,2.872704
+u64toa,null,19,2.867724
+u64toa,null,20,2.865425
+u64toa,sprintf,1,151.026174
+u64toa,sprintf,2,168.068154
+u64toa,sprintf,3,195.676844
+u64toa,sprintf,4,221.162231
+u64toa,sprintf,5,253.450464
+u64toa,sprintf,6,269.684041
+u64toa,sprintf,7,314.853085
+u64toa,sprintf,8,316.908191
+u64toa,sprintf,9,338.977596
+u64toa,sprintf,10,387.227001
+u64toa,sprintf,11,400.146892
+u64toa,sprintf,12,421.473409
+u64toa,sprintf,13,442.165080
+u64toa,sprintf,14,493.524346
+u64toa,sprintf,15,520.136517
+u64toa,sprintf,16,557.685883
+u64toa,sprintf,17,593.513849
+u64toa,sprintf,18,613.528147
+u64toa,sprintf,19,647.478395
+u64toa,sprintf,20,647.517858
+u64toa,naive,1,25.448223
+u64toa,naive,2,30.297492
+u64toa,naive,3,43.911230
+u64toa,naive,4,58.676272
+u64toa,naive,5,70.405780
+u64toa,naive,6,94.011151
+u64toa,naive,7,101.379879
+u64toa,naive,8,117.125732
+u64toa,naive,9,123.529358
+u64toa,naive,10,133.193414
+u64toa,naive,11,157.687645
+u64toa,naive,12,167.501123
+u64toa,naive,13,191.570463
+u64toa,naive,14,198.513151
+u64toa,naive,15,213.795801
+u64toa,naive,16,237.570132
+u64toa,naive,17,258.266017
+u64toa,naive,18,290.750413
+u64toa,naive,19,302.544286
+u64toa,naive,20,314.987180
+u64toa,lut,1,9.515403
+u64toa,lut,2,11.070142
+u64toa,lut,3,20.089392
+u64toa,lut,4,24.111868
+u64toa,lut,5,34.138365
+u64toa,lut,6,37.293819
+u64toa,lut,7,46.725699
+u64toa,lut,8,55.097460
+u64toa,lut,9,64.524743
+u64toa,lut,10,65.189090
+u64toa,lut,11,81.089344
+u64toa,lut,12,82.574737
+u64toa,lut,13,97.009138
+u64toa,lut,14,102.300922
+u64toa,lut,15,113.191759
+u64toa,lut,16,114.215864
+u64toa,lut,17,130.055201
+u64toa,lut,18,131.026818
+u64toa,lut,19,147.442764
+u64toa,lut,20,156.352056
+u64toa,count,1,21.503139
+u64toa,count,2,30.804373
+u64toa,count,3,40.693326
+u64toa,count,4,51.597190
+u64toa,count,5,61.360094
+u64toa,count,6,76.134714
+u64toa,count,7,84.975809
+u64toa,count,8,101.988288
+u64toa,count,9,111.947355
+u64toa,count,10,121.201846
+u64toa,count,11,134.504867
+u64toa,count,12,154.432195
+u64toa,count,13,164.284368
+u64toa,count,14,178.174725
+u64toa,count,15,195.642746
+u64toa,count,16,218.199491
+u64toa,count,17,245.271800
+u64toa,count,18,277.635126
+u64toa,count,19,280.412048
+u64toa,count,20,296.632216
+u64toa,countlut,1,14.457772
+u64toa,countlut,2,11.595029
+u64toa,countlut,3,19.499756
+u64toa,countlut,4,19.246124
+u64toa,countlut,5,34.171314
+u64toa,countlut,6,37.335963
+u64toa,countlut,7,44.167161
+u64toa,countlut,8,42.264923
+u64toa,countlut,9,59.533333
+u64toa,countlut,10,64.334711
+u64toa,countlut,11,66.861067
+u64toa,countlut,12,75.400638
+u64toa,countlut,13,87.526302
+u64toa,countlut,14,90.433871
+u64toa,countlut,15,98.858504
+u64toa,countlut,16,101.204789
+u64toa,countlut,17,108.163952
+u64toa,countlut,18,112.723192
+u64toa,countlut,19,130.026083
+u64toa,countlut,20,128.497014
+u64toa,branchlut,1,7.172949
+u64toa,branchlut,2,7.273712
+u64toa,branchlut,3,8.285940
+u64toa,branchlut,4,9.214263
+u64toa,branchlut,5,17.722035
+u64toa,branchlut,6,12.513007
+u64toa,branchlut,7,13.227544
+u64toa,branchlut,8,17.419363
+u64toa,branchlut,9,39.232071
+u64toa,branchlut,10,36.785023
+u64toa,branchlut,11,43.146121
+u64toa,branchlut,12,38.400297
+u64toa,branchlut,13,39.202187
+u64toa,branchlut,14,40.260007
+u64toa,branchlut,15,44.351063
+u64toa,branchlut,16,51.124025
+u64toa,branchlut,17,98.042822
+u64toa,branchlut,18,96.956267
+u64toa,branchlut,19,100.656914
+u64toa,branchlut,20,99.630127
+u64toa,vc,1,32.685538
+u64toa,vc,2,48.584260
+u64toa,vc,3,62.034785
+u64toa,vc,4,75.859628
+u64toa,vc,5,92.617326
+u64toa,vc,6,116.626132
+u64toa,vc,7,131.299989
+u64toa,vc,8,152.790485
+u64toa,vc,9,163.364857
+u64toa,vc,10,189.572060
+u64toa,vc,11,195.884500
+u64toa,vc,12,219.101378
+u64toa,vc,13,251.896874
+u64toa,vc,14,251.328310
+u64toa,vc,15,266.115956
+u64toa,vc,16,293.751465
+u64toa,vc,17,312.612161
+u64toa,vc,18,335.164309
+u64toa,vc,19,355.655220
+u64toa,vc,20,386.991377
+i64toa,null,1,3.835509
+i64toa,null,2,4.146610
+i64toa,null,3,4.118641
+i64toa,null,4,3.487244
+i64toa,null,5,3.414449
+i64toa,null,6,3.638580
+i64toa,null,7,3.223268
+i64toa,null,8,3.235528
+i64toa,null,9,3.229015
+i64toa,null,10,3.225184
+i64toa,null,11,3.214839
+i64toa,null,12,3.283802
+i64toa,null,13,3.216372
+i64toa,null,14,3.260048
+i64toa,null,15,3.223268
+i64toa,null,16,3.241658
+i64toa,null,17,3.216755
+i64toa,null,18,3.235911
+i64toa,null,19,3.215605
+i64toa,null,20,3.217521
+i64toa,sprintf,1,155.609168
+i64toa,sprintf,2,185.469127
+i64toa,sprintf,3,187.272517
+i64toa,sprintf,4,219.770705
+i64toa,sprintf,5,253.559272
+i64toa,sprintf,6,271.298165
+i64toa,sprintf,7,312.750088
+i64toa,sprintf,8,325.094518
+i64toa,sprintf,9,336.603726
+i64toa,sprintf,10,375.730819
+i64toa,sprintf,11,407.271567
+i64toa,sprintf,12,441.018756
+i64toa,sprintf,13,465.340579
+i64toa,sprintf,14,507.024678
+i64toa,sprintf,15,524.990000
+i64toa,sprintf,16,556.548372
+i64toa,sprintf,17,575.228996
+i64toa,sprintf,18,593.394695
+i64toa,sprintf,19,638.866029
+i64toa,sprintf,20,655.084664
+i64toa,naive,1,27.169241
+i64toa,naive,2,36.416452
+i64toa,naive,3,48.973903
+i64toa,naive,4,62.709859
+i64toa,naive,5,77.175677
+i64toa,naive,6,84.898034
+i64toa,naive,7,99.475343
+i64toa,naive,8,106.088540
+i64toa,naive,9,132.186933
+i64toa,naive,10,133.873086
+i64toa,naive,11,161.141557
+i64toa,naive,12,168.612198
+i64toa,naive,13,184.488315
+i64toa,naive,14,198.048032
+i64toa,naive,15,226.922199
+i64toa,naive,16,240.619076
+i64toa,naive,17,265.591835
+i64toa,naive,18,287.949736
+i64toa,naive,19,308.178970
+i64toa,naive,20,309.849415
+i64toa,lut,1,12.121449
+i64toa,lut,2,14.986108
+i64toa,lut,3,33.587042
+i64toa,lut,4,30.882148
+i64toa,lut,5,45.610793
+i64toa,lut,6,43.128114
+i64toa,lut,7,59.235641
+i64toa,lut,8,57.059849
+i64toa,lut,9,66.731952
+i64toa,lut,10,70.862470
+i64toa,lut,11,86.381894
+i64toa,lut,12,87.453507
+i64toa,lut,13,106.608063
+i64toa,lut,14,97.849724
+i64toa,lut,15,119.123752
+i64toa,lut,16,120.642477
+i64toa,lut,17,142.038724
+i64toa,lut,18,142.459400
+i64toa,lut,19,156.465846
+i64toa,lut,20,147.187600
+i64toa,count,1,25.691127
+i64toa,count,2,35.543684
+i64toa,count,3,48.084659
+i64toa,count,4,58.457889
+i64toa,count,5,64.073034
+i64toa,count,6,87.285313
+i64toa,count,7,88.542361
+i64toa,count,8,106.452896
+i64toa,count,9,116.577474
+i64toa,count,10,125.625842
+i64toa,count,11,138.731934
+i64toa,count,12,149.786750
+i64toa,count,13,167.993827
+i64toa,count,14,181.644729
+i64toa,count,15,201.129542
+i64toa,count,16,217.491085
+i64toa,count,17,242.071136
+i64toa,count,18,265.032466
+i64toa,count,19,282.465622
+i64toa,count,20,292.335036
+i64toa,countlut,1,19.634234
+i64toa,countlut,2,14.058551
+i64toa,countlut,3,22.872061
+i64toa,countlut,4,27.071159
+i64toa,countlut,5,39.464247
+i64toa,countlut,6,34.578964
+i64toa,countlut,7,46.031469
+i64toa,countlut,8,50.725571
+i64toa,countlut,9,63.033220
+i64toa,countlut,10,57.908864
+i64toa,countlut,11,76.977982
+i64toa,countlut,12,77.126253
+i64toa,countlut,13,97.626360
+i64toa,countlut,14,90.529270
+i64toa,countlut,15,102.115871
+i64toa,countlut,16,102.477545
+i64toa,countlut,17,118.188917
+i64toa,countlut,18,114.939979
+i64toa,countlut,19,137.459944
+i64toa,countlut,20,139.670218
+i64toa,branchlut,1,11.760924
+i64toa,branchlut,2,10.687396
+i64toa,branchlut,3,10.703104
+i64toa,branchlut,4,11.564762
+i64toa,branchlut,5,16.731262
+i64toa,branchlut,6,15.991439
+i64toa,branchlut,7,18.545380
+i64toa,branchlut,8,17.804025
+i64toa,branchlut,9,42.037344
+i64toa,branchlut,10,43.048040
+i64toa,branchlut,11,46.244872
+i64toa,branchlut,12,48.337908
+i64toa,branchlut,13,52.068822
+i64toa,branchlut,14,50.789553
+i64toa,branchlut,15,53.186411
+i64toa,branchlut,16,53.316675
+i64toa,branchlut,17,97.651646
+i64toa,branchlut,18,102.208205
+i64toa,branchlut,19,102.215101
+i64toa,branchlut,20,104.198179
+i64toa,vc,1,32.298194
+i64toa,vc,2,55.877512
+i64toa,vc,3,67.978655
+i64toa,vc,4,80.131138
+i64toa,vc,5,95.690407
+i64toa,vc,6,118.083939
+i64toa,vc,7,120.929824
+i64toa,vc,8,137.066087
+i64toa,vc,9,167.731383
+i64toa,vc,10,185.182163
+i64toa,vc,11,196.282955
+i64toa,vc,12,214.342910
+i64toa,vc,13,224.725718
+i64toa,vc,14,255.018996
+i64toa,vc,15,259.432647
+i64toa,vc,16,286.004205
+i64toa,vc,17,300.650094
+i64toa,vc,18,327.382567
+i64toa,vc,19,351.798639
+i64toa,vc,20,352.671791
 </textarea>
+</div>
 </body>
 </html>
