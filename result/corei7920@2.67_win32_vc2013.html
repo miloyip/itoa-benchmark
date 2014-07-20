@@ -3,6 +3,9 @@
 <script src="http://code.jquery.com/jquery-1.8.2.js"></script>
 <script src="http://www.google.com/jsapi?autoload={'modules':[{'name':'visualization','version':'1','packages':['controls', 'charteditor']}]}"></script>
 <script src="http://jquery-csv.googlecode.com/git/src/jquery.csv.js"></script>
+<link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+<link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap-theme.min.css">
+<script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
 <script>
 $(function() {
 	google.load("visualization", "1", {packages:["corechart"]});
@@ -73,6 +76,22 @@ $(function() {
 		drawBarChart(type, timeData[type]);
 		drawDigitChart(type, timeDigitData[type]);
 	}
+
+	$(".chart").each(function() {
+		var chart = $(this);
+		var d = $("#downloadDD").clone().css("display", "");
+		$('li a', d).each(function() {
+	        $(this).click(function() {
+	            var svg = chart[0].getElementsByTagName('svg')[0].parentNode.innerHTML;
+	            svg=sanitize(svg);
+	            $('#imageFilename').val($("#title").html() + "_" + chart.data("filename"));
+	            $('#imageGetFormTYPE').val($(this).attr('dltype'));
+	            $('#imageGetFormSVG').val(svg);
+	            $('#imageGetForm').submit();
+	        });
+	    });		
+		$(this).after(d);
+	});
 });
 
 function drawTable(type, timeData) {
@@ -132,15 +151,10 @@ function drawBarChart(type, timeData) {
 	};
 	var div = document.createElement("div");
 	div.className = "chart";
+	$(div).data("filename", type + "_time");
 	$("#main").append(div);
 	var chart = new google.visualization.BarChart(div);
 
-	var button = document.createElement("button");
-	$("#main").append(button);
-	google.visualization.events.addListener(chart, 'ready', function () {
-        button.href = chart.getImageURI();
-        button.innerHTML = "View PNG";
-    });
 	chart.draw(data, options);
 }
 
@@ -166,59 +180,67 @@ function drawDigitChart(type, timeDigitData) {
 	};
 	var div = document.createElement("div");
 	div.className = "chart";
+	$(div).data("filename", type + "_timedigit");
 	$("#main").append(div);
 	var chart = new google.visualization.LineChart(div);
-/*
-	var a = document.createElement("a");
-	$("#main").append(a);
-	google.visualization.events.addListener(chart, 'ready', function () {
-        a.href = chart.getImageURI();
-        a.innerHTML = "Download PNG";
-    });
-*/
+
 	chart.draw(data, options);
+}
+
+// http://jsfiddle.net/P6XXM/
+function sanitize(svg) {
+    svg = svg
+        .replace(/\<svg/,'<svg xmlns="http://www.w3.org/2000/svg" version="1.1"')
+        .replace(/zIndex="[^"]+"/g, '')
+        .replace(/isShadow="[^"]+"/g, '')
+        .replace(/symbolName="[^"]+"/g, '')
+        .replace(/jQuery[0-9]+="[^"]+"/g, '')
+        .replace(/isTracker="[^"]+"/g, '')
+        .replace(/url\([^#]+#/g, 'url(#')
+        .replace('<svg xmlns:xlink="http://www.w3.org/1999/xlink" ', '<svg ')
+        .replace(/ href=/g, ' xlink:href=')
+    /*.replace(/preserveAspectRatio="none">/g, 'preserveAspectRatio="none"/>')*/
+    /* This fails in IE < 8
+    .replace(/([0-9]+)\.([0-9]+)/g, function(s1, s2, s3) { // round off to save weight
+    return s2 +'.'+ s3[0];
+    })*/
+
+    // IE specific
+        .replace(/id=([^" >]+)/g, 'id="$1"')
+        .replace(/class=([^" ]+)/g, 'class="$1"')
+        .replace(/ transform /g, ' ')
+        .replace(/:(path|rect)/g, '$1')
+        .replace(/<img ([^>]*)>/gi, '<image $1 />')
+        .replace(/<\/image>/g, '') // remove closing tags for images as they'll never have any content
+        .replace(/<image ([^>]*)([^\/])>/gi, '<image $1$2 />') // closes image tags for firefox
+        .replace(/width=(\d+)/g, 'width="$1"')
+        .replace(/height=(\d+)/g, 'height="$1"')
+        .replace(/hc-svg-href="/g, 'xlink:href="')
+        .replace(/style="([^"]+)"/g, function (s) {
+            return s.toLowerCase();
+        });
+
+    // IE9 beta bugs with innerHTML. Test again with final IE9.
+    svg = svg.replace(/(url\(#highcharts-[0-9]+)&quot;/g, '$1')
+        .replace(/&quot;/g, "'");
+    if (svg.match(/ xmlns="/g).length == 2) {
+        svg = svg.replace(/xmlns="[^"]+"/, '');
+    }
+
+    return svg;
 }
 </script>
 <style type="text/css">
-body {
-	color: #333333;
-	font-family: Helvetica, arial, freesans, clean, sans-serif, 'Segoe UI Emoji', 'Segoe UI Symbol';
-	font-size: 15px;
-	font-style: normal;
-	font-variant: normal;
-	font-weight: normal;
-	line-height: 25.5px;
-}
-h1 {
-	font-size: 2em;
-	line-height: 1.7;
-	margin: 1em 0 15px;
-	padding: 0;
-	overflow: hidden;
-}
-
-h2 {
-	border-top: 1px solid #eee;
-	font-size: 1.5em;
-	line-height: 1.7;
-	margin: 1em 0 15px;
-	padding: 0;
+@media (min-width: 800px) {
+  .container {
+    max-width: 800px;
+  }
 }
 textarea {
-	width: 800px;	
 	font-family: Consolas, 'Liberation Mono', Menlo, Courier, monospace;
-	font-size: 13px;
-	font-style: normal;
-	font-variant: normal;
-	font-weight: normal;
-	line-height: 19px;
-}
-#container {
-	margin: 0 auto;
-	width: 800px;
 }
 .tablechart {
-	width: 560px;
+	width: 700px;
 	margin: auto;
 	padding-top: 20px;
 	padding-bottom: 20px;
@@ -230,11 +252,13 @@ textarea {
 </style>
 </head>
 <body>
-<div id="container">
-<h1>corei7920@2.67_win32_vc2013</h1>
+<div class="container">
+<div class="page-header">
+<h1 id="title">corei7920@2.67_win32_vc2013</h1>
+</div>
 <div id="main"></div>
 <h2>Source CSV</h2>
-<textarea id="textInput" rows="5" readonly>
+<textarea id="textInput" class="form-control" rows="5" readonly>
 Type,Function,Digit,Time(ms)
 u32toa,null,1,3.097985
 u32toa,null,2,3.111011
@@ -717,6 +741,24 @@ i64toa,vc,18,327.382567
 i64toa,vc,19,351.798639
 i64toa,vc,20,352.671791
 </textarea>
+</div>
+<div class="row" id="downloadDD" style="display: none">
+<div class="btn-group pull-right" >
+    <button class="btn dropdown-toggle" data-toggle="dropdown"><span class="glyphicon glyphicon-picture"></span></button>
+    <ul class="dropdown-menu">
+        <li><a tabindex="-1" href="#" dltype="image/jpeg">JPEG</a></li>
+        <li><a tabindex="-1" href="#" dltype="image/png">PNG</a></li>
+        <li><a tabindex="-1" href="#" dltype="application/pdf">PDF</a></li>
+        <li><a tabindex="-1" href="#" dltype="image/svg+xml">SVG</a></li>
+    </ul>
+</div>
+</div>
+<form method="post" action="http://export.highcharts.com/" id="imageGetForm">
+    <input type="hidden" name="filename" id="imageFilename" value="" />
+    <input type="hidden" name="type" id="imageGetFormTYPE" value="" />
+    <input type="hidden" name="width" value="900" />
+    <input type="hidden" name="svg" value="" id="imageGetFormSVG" />
+</form>
 </div>
 </body>
 </html>
