@@ -14,6 +14,7 @@
 #include "countlut.h"
 #include "branchlut.h"
 #include "vc.h"
+#include "sse2.h"
 
 const unsigned kIterationPerDigit = 1000000;
 
@@ -136,6 +137,7 @@ void Verify() {
 	VERIFY(u32toa, naive, count);
 	VERIFY(u32toa, naive, countlut);
 	VERIFY(u32toa, naive, branchlut);
+	VERIFY(u32toa, naive, sse2);
 
 #ifdef _MSC_VER
 	VERIFY(u32toa, naive, vc);
@@ -146,6 +148,7 @@ void Verify() {
 	VERIFY(i32toa, naive, count);
 	VERIFY(i32toa, naive, countlut);
 	VERIFY(i32toa, naive, branchlut);
+	VERIFY(i32toa, naive, sse2);
 
 #ifdef _MSC_VER
 	VERIFY(i32toa, naive, vc);
@@ -156,6 +159,7 @@ void Verify() {
 	VERIFY(u64toa, naive, count);
 	VERIFY(u64toa, naive, countlut);
 	VERIFY(u64toa, naive, branchlut);
+	VERIFY(u64toa, naive, sse2);
 
 #ifdef _MSC_VER
 	VERIFY(u64toa, naive, vc);
@@ -166,6 +170,7 @@ void Verify() {
 	VERIFY(i64toa, naive, count);
 	VERIFY(i64toa, naive, countlut);
 	VERIFY(i64toa, naive, branchlut);
+	VERIFY(i64toa, naive, sse2);
 
 #ifdef _MSC_VER
 	VERIFY(i64toa, naive, vc);
@@ -201,6 +206,7 @@ void Bench() {
 	BENCH(u32toa, count);
 	BENCH(u32toa, countlut);
     BENCH(u32toa, branchlut);
+	BENCH(u32toa, sse2);
 
 #ifdef _MSC_VER
 	BENCH(u32toa, vc);
@@ -216,6 +222,7 @@ void Bench() {
 	BENCH(i32toa, count);
 	BENCH(i32toa, countlut);
 	BENCH(i32toa, branchlut);
+	BENCH(i32toa, sse2);
 
 #ifdef _MSC_VER
 	BENCH(i32toa, vc);
@@ -231,6 +238,7 @@ void Bench() {
 	BENCH(u64toa, count);
 	BENCH(u64toa, countlut);
 	BENCH(u64toa, branchlut);
+	BENCH(u64toa, sse2);
 
 #ifdef _MSC_VER
 	BENCH(u64toa, vc);
@@ -246,6 +254,7 @@ void Bench() {
 	BENCH(i64toa, count);
 	BENCH(i64toa, countlut);
 	BENCH(i64toa, branchlut);
+	BENCH(i64toa, sse2);
 
 #ifdef _MSC_VER
 	BENCH(i64toa, vc);
@@ -257,6 +266,9 @@ void Bench() {
 }
 
 int main() {
+	char buffer[16];
+	u32toa_sse2(87654321, buffer);
+	u32toa_sse2(7654321, buffer);
 	Verify();
 	Bench();
 }
