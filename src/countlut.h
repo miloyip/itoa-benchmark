@@ -1,16 +1,10 @@
 #pragma once
 
 #include "countdecimaldigit.h"
+#include "digitslut.h"
 
 // Additional count number of digit pass
-// Use lookup table of two gDigitsCountLut
-
-const char gDigitsCountLut[201] =
-	"0001020304050607080910111213141516171819"
-	"2021222324252627282930313233343536373839"
-	"4041424344454647484950515253545556575859"
-	"6061626364656667686970717273747576777879"
-	"8081828384858687888990919293949596979899";
+// Use lookup table of two gDigitsLut
 
 inline void u32toa_countlut(uint32_t value, char* buffer) {
 	unsigned digit = CountDecimalDigit32(value);
@@ -20,8 +14,8 @@ inline void u32toa_countlut(uint32_t value, char* buffer) {
 	while (value >= 100) {
 		const unsigned i = (value % 100) << 1;
 		value /= 100;
-		*--buffer = gDigitsCountLut[i + 1];
-		*--buffer = gDigitsCountLut[i];
+		*--buffer = gDigitsLut[i + 1];
+		*--buffer = gDigitsLut[i];
 	}
 
 	if (value < 10) {
@@ -29,8 +23,8 @@ inline void u32toa_countlut(uint32_t value, char* buffer) {
 	}
 	else {
 		const unsigned i = value << 1;
-		*--buffer = gDigitsCountLut[i + 1];
-		*--buffer = gDigitsCountLut[i];
+		*--buffer = gDigitsLut[i + 1];
+		*--buffer = gDigitsLut[i];
 	}
 }
 
@@ -51,8 +45,8 @@ inline void u64toa_countlut(uint64_t value, char* buffer) {
 	while (value >= 100) {
 		const unsigned i = static_cast<unsigned>(value % 100) << 1;
 		value /= 100;
-		*--buffer = gDigitsCountLut[i + 1];
-		*--buffer = gDigitsCountLut[i];
+		*--buffer = gDigitsLut[i + 1];
+		*--buffer = gDigitsLut[i];
 	}
 
 	if (value < 10) {
@@ -60,8 +54,8 @@ inline void u64toa_countlut(uint64_t value, char* buffer) {
 	}
 	else {
 		const unsigned i = static_cast<unsigned>(value) << 1;
-		*--buffer = gDigitsCountLut[i + 1];
-		*--buffer = gDigitsCountLut[i];
+		*--buffer = gDigitsLut[i + 1];
+		*--buffer = gDigitsLut[i];
 	}
 }
 

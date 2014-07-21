@@ -1,14 +1,9 @@
 #pragma once
 
+#include "digitslut.h"
+
 // Branching for different cases (forward)
 // Use lookup table of two digits
-
-const char gDigitsBranchLut[201] =
-	"0001020304050607080910111213141516171819"
-	"2021222324252627282930313233343536373839"
-	"4041424344454647484950515253545556575859"
-	"6061626364656667686970717273747576777879"
-	"8081828384858687888990919293949596979899";
 
 inline void u32toa_branchlut(uint32_t value, char* buffer) {
     if (value < 10000) {
@@ -16,12 +11,12 @@ inline void u32toa_branchlut(uint32_t value, char* buffer) {
         const uint32_t d2 = (value % 100) << 1;
         
         if (value >= 1000)
-            *buffer++ = gDigitsBranchLut[d1];
+            *buffer++ = gDigitsLut[d1];
         if (value >= 100)
-            *buffer++ = gDigitsBranchLut[d1 + 1];
+            *buffer++ = gDigitsLut[d1 + 1];
         if (value >= 10)
-            *buffer++ = gDigitsBranchLut[d2];
-        *buffer++ = gDigitsBranchLut[d2 + 1];
+            *buffer++ = gDigitsLut[d2];
+        *buffer++ = gDigitsLut[d2 + 1];
     }
     else if (value < 100000000) {
         // value = bbbbcccc
@@ -35,17 +30,17 @@ inline void u32toa_branchlut(uint32_t value, char* buffer) {
         const uint32_t d4 = (c % 100) << 1;
         
         if (value >= 10000000)
-            *buffer++ = gDigitsBranchLut[d1];
+            *buffer++ = gDigitsLut[d1];
         if (value >= 1000000)
-            *buffer++ = gDigitsBranchLut[d1 + 1];
+            *buffer++ = gDigitsLut[d1 + 1];
         if (value >= 100000)
-            *buffer++ = gDigitsBranchLut[d2];
-        *buffer++ = gDigitsBranchLut[d2 + 1];
+            *buffer++ = gDigitsLut[d2];
+        *buffer++ = gDigitsLut[d2 + 1];
         
-        *buffer++ = gDigitsBranchLut[d3];
-        *buffer++ = gDigitsBranchLut[d3 + 1];
-        *buffer++ = gDigitsBranchLut[d4];
-        *buffer++ = gDigitsBranchLut[d4 + 1];
+        *buffer++ = gDigitsLut[d3];
+        *buffer++ = gDigitsLut[d3 + 1];
+        *buffer++ = gDigitsLut[d4];
+        *buffer++ = gDigitsLut[d4 + 1];
     }
     else {
         // value = aabbbbcccc in decimal
@@ -55,8 +50,8 @@ inline void u32toa_branchlut(uint32_t value, char* buffer) {
         
         if (a >= 10) {
             const unsigned i = a << 1;
-            *buffer++ = gDigitsBranchLut[i];
-            *buffer++ = gDigitsBranchLut[i + 1];
+            *buffer++ = gDigitsLut[i];
+            *buffer++ = gDigitsLut[i + 1];
         }
         else
             *buffer++ = '0' + static_cast<char>(a);
@@ -70,14 +65,14 @@ inline void u32toa_branchlut(uint32_t value, char* buffer) {
         const uint32_t d3 = (c / 100) << 1;
         const uint32_t d4 = (c % 100) << 1;
         
-        *buffer++ = gDigitsBranchLut[d1];
-        *buffer++ = gDigitsBranchLut[d1 + 1];
-        *buffer++ = gDigitsBranchLut[d2];
-        *buffer++ = gDigitsBranchLut[d2 + 1];
-        *buffer++ = gDigitsBranchLut[d3];
-        *buffer++ = gDigitsBranchLut[d3 + 1];
-        *buffer++ = gDigitsBranchLut[d4];
-        *buffer++ = gDigitsBranchLut[d4 + 1];
+        *buffer++ = gDigitsLut[d1];
+        *buffer++ = gDigitsLut[d1 + 1];
+        *buffer++ = gDigitsLut[d2];
+        *buffer++ = gDigitsLut[d2 + 1];
+        *buffer++ = gDigitsLut[d3];
+        *buffer++ = gDigitsLut[d3 + 1];
+        *buffer++ = gDigitsLut[d4];
+        *buffer++ = gDigitsLut[d4 + 1];
     }
     *buffer++ = '\0';
 }
@@ -99,12 +94,12 @@ inline void u64toa_branchlut(uint64_t value, char* buffer) {
             const uint32_t d2 = (v % 100) << 1;
             
             if (v >= 1000)
-                *buffer++ = gDigitsBranchLut[d1];
+                *buffer++ = gDigitsLut[d1];
             if (v >= 100)
-                *buffer++ = gDigitsBranchLut[d1 + 1];
+                *buffer++ = gDigitsLut[d1 + 1];
             if (v >= 10)
-                *buffer++ = gDigitsBranchLut[d2];
-            *buffer++ = gDigitsBranchLut[d2 + 1];
+                *buffer++ = gDigitsLut[d2];
+            *buffer++ = gDigitsLut[d2 + 1];
         }
         else {
             // value = bbbbcccc
@@ -118,17 +113,17 @@ inline void u64toa_branchlut(uint64_t value, char* buffer) {
             const uint32_t d4 = (c % 100) << 1;
             
             if (value >= 10000000)
-                *buffer++ = gDigitsBranchLut[d1];
+                *buffer++ = gDigitsLut[d1];
             if (value >= 1000000)
-                *buffer++ = gDigitsBranchLut[d1 + 1];
+                *buffer++ = gDigitsLut[d1 + 1];
             if (value >= 100000)
-                *buffer++ = gDigitsBranchLut[d2];
-            *buffer++ = gDigitsBranchLut[d2 + 1];
+                *buffer++ = gDigitsLut[d2];
+            *buffer++ = gDigitsLut[d2 + 1];
             
-            *buffer++ = gDigitsBranchLut[d3];
-            *buffer++ = gDigitsBranchLut[d3 + 1];
-            *buffer++ = gDigitsBranchLut[d4];
-            *buffer++ = gDigitsBranchLut[d4 + 1];
+            *buffer++ = gDigitsLut[d3];
+            *buffer++ = gDigitsLut[d3 + 1];
+            *buffer++ = gDigitsLut[d4];
+            *buffer++ = gDigitsLut[d4 + 1];
         }
     }
     else if (value < 10000000000000000) {
@@ -154,30 +149,30 @@ inline void u64toa_branchlut(uint64_t value, char* buffer) {
         const uint32_t d8 = (c1 % 100) << 1;
 
         if (value >= 1000000000000000)
-            *buffer++ = gDigitsBranchLut[d1];
+            *buffer++ = gDigitsLut[d1];
         if (value >= 100000000000000)
-            *buffer++ = gDigitsBranchLut[d1 + 1];
+            *buffer++ = gDigitsLut[d1 + 1];
         if (value >= 10000000000000)
-            *buffer++ = gDigitsBranchLut[d2];
+            *buffer++ = gDigitsLut[d2];
         if (value >= 1000000000000)
-            *buffer++ = gDigitsBranchLut[d2 + 1];
+            *buffer++ = gDigitsLut[d2 + 1];
         if (value >= 100000000000)
-            *buffer++ = gDigitsBranchLut[d3];
+            *buffer++ = gDigitsLut[d3];
         if (value >= 10000000000)
-            *buffer++ = gDigitsBranchLut[d3 + 1];
+            *buffer++ = gDigitsLut[d3 + 1];
         if (value >= 1000000000)
-            *buffer++ = gDigitsBranchLut[d4];
+            *buffer++ = gDigitsLut[d4];
         if (value >= 100000000)
-            *buffer++ = gDigitsBranchLut[d4 + 1];
+            *buffer++ = gDigitsLut[d4 + 1];
         
-        *buffer++ = gDigitsBranchLut[d5];
-        *buffer++ = gDigitsBranchLut[d5 + 1];
-        *buffer++ = gDigitsBranchLut[d6];
-        *buffer++ = gDigitsBranchLut[d6 + 1];
-        *buffer++ = gDigitsBranchLut[d7];
-        *buffer++ = gDigitsBranchLut[d7 + 1];
-        *buffer++ = gDigitsBranchLut[d8];
-        *buffer++ = gDigitsBranchLut[d8 + 1];
+        *buffer++ = gDigitsLut[d5];
+        *buffer++ = gDigitsLut[d5 + 1];
+        *buffer++ = gDigitsLut[d6];
+        *buffer++ = gDigitsLut[d6 + 1];
+        *buffer++ = gDigitsLut[d7];
+        *buffer++ = gDigitsLut[d7 + 1];
+        *buffer++ = gDigitsLut[d8];
+        *buffer++ = gDigitsLut[d8 + 1];
     }
     else {
         const uint32_t a = static_cast<uint32_t>(value / 10000000000000000); // 1 to 1844
@@ -187,23 +182,23 @@ inline void u64toa_branchlut(uint64_t value, char* buffer) {
             *buffer++ = '0' + static_cast<char>(a);
         else if (a < 100) {
             const uint32_t i = a << 1;
-            *buffer++ = gDigitsBranchLut[i];
-            *buffer++ = gDigitsBranchLut[i + 1];
+            *buffer++ = gDigitsLut[i];
+            *buffer++ = gDigitsLut[i + 1];
         }
         else if (a < 1000) {
             *buffer++ = '0' + static_cast<char>(a / 100);
             
             const uint32_t i = (a % 100) << 1;
-            *buffer++ = gDigitsBranchLut[i];
-            *buffer++ = gDigitsBranchLut[i + 1];
+            *buffer++ = gDigitsLut[i];
+            *buffer++ = gDigitsLut[i + 1];
         }
         else {
             const uint32_t i = (a / 100) << 1;
             const uint32_t j = (a % 100) << 1;
-            *buffer++ = gDigitsBranchLut[i];
-            *buffer++ = gDigitsBranchLut[i + 1];
-            *buffer++ = gDigitsBranchLut[j];
-            *buffer++ = gDigitsBranchLut[j + 1];
+            *buffer++ = gDigitsLut[i];
+            *buffer++ = gDigitsLut[i + 1];
+            *buffer++ = gDigitsLut[j];
+            *buffer++ = gDigitsLut[j + 1];
         }
         
         const uint32_t v0 = static_cast<uint32_t>(value / 100000000);
@@ -227,22 +222,22 @@ inline void u64toa_branchlut(uint64_t value, char* buffer) {
         const uint32_t d7 = (c1 / 100) << 1;
         const uint32_t d8 = (c1 % 100) << 1;
         
-        *buffer++ = gDigitsBranchLut[d1];
-        *buffer++ = gDigitsBranchLut[d1 + 1];
-        *buffer++ = gDigitsBranchLut[d2];
-        *buffer++ = gDigitsBranchLut[d2 + 1];
-        *buffer++ = gDigitsBranchLut[d3];
-        *buffer++ = gDigitsBranchLut[d3 + 1];
-        *buffer++ = gDigitsBranchLut[d4];
-        *buffer++ = gDigitsBranchLut[d4 + 1];
-        *buffer++ = gDigitsBranchLut[d5];
-        *buffer++ = gDigitsBranchLut[d5 + 1];
-        *buffer++ = gDigitsBranchLut[d6];
-        *buffer++ = gDigitsBranchLut[d6 + 1];
-        *buffer++ = gDigitsBranchLut[d7];
-        *buffer++ = gDigitsBranchLut[d7 + 1];
-        *buffer++ = gDigitsBranchLut[d8];
-        *buffer++ = gDigitsBranchLut[d8 + 1];
+        *buffer++ = gDigitsLut[d1];
+        *buffer++ = gDigitsLut[d1 + 1];
+        *buffer++ = gDigitsLut[d2];
+        *buffer++ = gDigitsLut[d2 + 1];
+        *buffer++ = gDigitsLut[d3];
+        *buffer++ = gDigitsLut[d3 + 1];
+        *buffer++ = gDigitsLut[d4];
+        *buffer++ = gDigitsLut[d4 + 1];
+        *buffer++ = gDigitsLut[d5];
+        *buffer++ = gDigitsLut[d5 + 1];
+        *buffer++ = gDigitsLut[d6];
+        *buffer++ = gDigitsLut[d6 + 1];
+        *buffer++ = gDigitsLut[d7];
+        *buffer++ = gDigitsLut[d7 + 1];
+        *buffer++ = gDigitsLut[d8];
+        *buffer++ = gDigitsLut[d8 + 1];
     }
     
 	*buffer = '\0';
