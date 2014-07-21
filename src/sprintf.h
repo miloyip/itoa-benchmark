@@ -1,6 +1,11 @@
 #pragma once
 
+#ifdef _MSC_VER
+#include "msinttypes/inttypes.h"
+#else
 #include <inttypes.h>
+#endif
+
 #include <stdio.h>
 
 inline void u32toa_sprintf(uint32_t value, char* buffer) {

@@ -59,7 +59,7 @@ inline void u32toa_branchlut(uint32_t value, char* buffer) {
             *buffer++ = gDigitsBranchLut[i + 1];
         }
         else
-            *buffer++ = '0' + a;
+            *buffer++ = '0' + static_cast<char>(a);
 
         const uint32_t b = value / 10000; // 0 to 9999
         const uint32_t c = value % 10000; // 0 to 9999
@@ -184,14 +184,14 @@ inline void u64toa_branchlut(uint64_t value, char* buffer) {
         value %= 10000000000000000;
         
         if (a < 10)
-            *buffer++ = '0' + a;
+            *buffer++ = '0' + static_cast<char>(a);
         else if (a < 100) {
             const uint32_t i = a << 1;
             *buffer++ = gDigitsBranchLut[i];
             *buffer++ = gDigitsBranchLut[i + 1];
         }
         else if (a < 1000) {
-            *buffer++ = (a / 100) + '0';
+            *buffer++ = '0' + static_cast<char>(a / 100);
             
             const uint32_t i = (a % 100) << 1;
             *buffer++ = gDigitsBranchLut[i];

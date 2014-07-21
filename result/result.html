@@ -1,0 +1,764 @@
+<html>
+<head>
+<script src="http://code.jquery.com/jquery-1.8.2.js"></script>
+<script src="http://www.google.com/jsapi?autoload={'modules':[{'name':'visualization','version':'1','packages':['controls', 'charteditor']}]}"></script>
+<script src="http://jquery-csv.googlecode.com/git/src/jquery.csv.js"></script>
+<link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+<link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap-theme.min.css">
+<script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+<script>
+$(function() {
+	google.load("visualization", "1", {packages:["corechart"]});
+
+    var csv = $('#textInput').val();
+    var data = $.csv.toArrays(csv, {
+        onParseValue: $.csv.hooks.castToScalar
+    });
+
+    // Convert data for bar chart (summing all digits)
+    var timeData = {};	// type -> table
+    var funcRowMap;
+
+    for (var i = 1; i < data.length; i++) {
+    	var type = data[i][0];
+   		var func = data[i][1];
+   		var time = data[i][3];
+   		if (timeData[type] == null) {
+   			timeData[type] = [["Function", "Time (ms)"/*, { role: "style" }*/]];
+   			funcRowMap = {};
+   		}
+
+   		var table = timeData[type];
+   		
+   		if (funcRowMap[func] == null)
+   			funcRowMap[func] = table.push([func, 0/*, defaultColors[table.length - 1]*/]) - 1;
+   		
+   		table[funcRowMap[func]][1] += time;
+    }
+
+    // Convert data for drawing line chart per digit
+    var timeDigitData = {}; // type -> table
+    var funcColumnMap;
+
+    for (var i = 1; i < data.length; i++) {
+    	var type = data[i][0];
+   		var func = data[i][1];
+		var digit = data[i][2];
+   		var time = data[i][3];
+
+   		if (timeDigitData[type] == null) {
+   			timeDigitData[type] = [["Digit"]];
+   			funcColumnMap = {};
+   		}
+
+   		var table = timeDigitData[type];
+
+   		if (funcColumnMap[func] == null)
+   			funcColumnMap[func] = table[0].push(func) - 1;
+
+   		var row;
+   		for (row = 1; row < table.length; row++)
+   			if (table[row][0] == digit)
+   				break;
+
+    	if (row == table.length)
+    		table.push([digit]);
+
+		table[row][funcColumnMap[func]] = time;
+	}
+
+	for (var type in timeData) {
+		var header = document.createElement("h2");
+		header.innerHTML = type;
+		$("#main").append(header);
+
+		drawTable(type, timeData[type]);
+		drawBarChart(type, timeData[type]);
+		drawDigitChart(type, timeDigitData[type]);
+	}
+
+	$(".chart").each(function() {
+		var chart = $(this);
+		var d = $("#downloadDD").clone().css("display", "");
+		$('li a', d).each(function() {
+	        $(this).click(function() {
+	            var svg = chart[0].getElementsByTagName('svg')[0].parentNode.innerHTML;
+	            svg=sanitize(svg);
+	            $('#imageFilename').val($("#title").html() + "_" + chart.data("filename"));
+	            $('#imageGetFormTYPE').val($(this).attr('dltype'));
+	            $('#imageGetFormSVG').val(svg);
+	            $('#imageGetForm').submit();
+	        });
+	    });		
+		$(this).after(d);
+	});
+});
+
+function drawTable(type, timeData) {
+	var data = google.visualization.arrayToDataTable(timeData);
+    data.addColumn('number', 'Speedup');
+    data.sort([{ column: 1, desc: true }]);
+    var formatter1 = new google.visualization.NumberFormat({ fractionDigits: 3 });
+    formatter1.format(data, 1);
+
+	var div = document.createElement("div");
+	div.className = "tablechart";
+	$("#main").append(div);
+    var table = new google.visualization.Table(div);
+    redrawTable(0);
+    table.setSelection([{ row: 0, column: null}]);
+
+    function redrawTable(selectedRow) {
+        // Compute relative time using the first row as basis
+        var basis = data.getValue(selectedRow, 1);
+        for (var rowIndex = 0; rowIndex < data.getNumberOfRows(); rowIndex++)
+            data.setValue(rowIndex, 2, basis / data.getValue(rowIndex, 1));
+
+        var formatter = new google.visualization.NumberFormat({suffix: 'x'});
+        formatter.format(data, 2); // Apply formatter to second column
+
+        table.draw(data);
+    }
+
+    google.visualization.events.addListener(table, 'select',
+    function() {
+        var selection = table.getSelection();
+        if (selection.length > 0) {
+            var item = selection[0];
+            if (item.row != null)
+                redrawTable(item.row);
+        }
+    });
+
+}
+
+function drawBarChart(type, timeData) {
+    var defaultColors = ["#3366cc","#dc3912","#ff9900","#109618","#990099","#0099c6","#dd4477","#66aa00","#b82e2e","#316395","#994499","#22aa99","#aaaa11","#6633cc","#e67300","#8b0707","#651067","#329262","#5574a6","#3b3eac","#b77322","#16d620","#b91383","#f4359e","#9c5935","#a9c413","#2a778d","#668d1c","#bea413","#0c5922","#743411"];
+
+	var data = google.visualization.arrayToDataTable(timeData);
+	data.addColumn({ type: "string", role: "style" })
+	for (var rowIndex = 0; rowIndex < data.getNumberOfRows(); rowIndex++)
+		data.setValue(rowIndex, 2, defaultColors[rowIndex]);
+
+    data.sort([{ column: 1, desc: true }]);
+	var options = { 
+		title: type,
+		chartArea: {'width': '70%', 'height': '70%'},
+		width: 800,
+		height: 300,
+		legend: { position: "none" },
+		hAxis: { title: "Time (ms)" }
+	};
+	var div = document.createElement("div");
+	div.className = "chart";
+	$(div).data("filename", type + "_time");
+	$("#main").append(div);
+	var chart = new google.visualization.BarChart(div);
+
+	chart.draw(data, options);
+}
+
+function drawDigitChart(type, timeDigitData) {
+	var data = google.visualization.arrayToDataTable(timeDigitData);
+
+	var options = { 
+		title: type,
+		chartArea: {'width': '70%', 'height': '80%'},
+		hAxis: {
+			title: "Digit",
+			gridlines: { count: timeDigitData.length - 1 },
+			maxAlternation: 1,
+			minTextSpacing: 0
+		},
+		vAxis: {
+			title: "Time (ms) in log scale",
+			//logScale: true,
+			minorGridlines: { count: 10 }
+		},
+		width: 800,
+		height: 600
+	};
+	var div = document.createElement("div");
+	div.className = "chart";
+	$(div).data("filename", type + "_timedigit");
+	$("#main").append(div);
+	var chart = new google.visualization.LineChart(div);
+
+	chart.draw(data, options);
+}
+
+// http://jsfiddle.net/P6XXM/
+function sanitize(svg) {
+    svg = svg
+        .replace(/\<svg/,'<svg xmlns="http://www.w3.org/2000/svg" version="1.1"')
+        .replace(/zIndex="[^"]+"/g, '')
+        .replace(/isShadow="[^"]+"/g, '')
+        .replace(/symbolName="[^"]+"/g, '')
+        .replace(/jQuery[0-9]+="[^"]+"/g, '')
+        .replace(/isTracker="[^"]+"/g, '')
+        .replace(/url\([^#]+#/g, 'url(#')
+        .replace('<svg xmlns:xlink="http://www.w3.org/1999/xlink" ', '<svg ')
+        .replace(/ href=/g, ' xlink:href=')
+    /*.replace(/preserveAspectRatio="none">/g, 'preserveAspectRatio="none"/>')*/
+    /* This fails in IE < 8
+    .replace(/([0-9]+)\.([0-9]+)/g, function(s1, s2, s3) { // round off to save weight
+    return s2 +'.'+ s3[0];
+    })*/
+
+    // IE specific
+        .replace(/id=([^" >]+)/g, 'id="$1"')
+        .replace(/class=([^" ]+)/g, 'class="$1"')
+        .replace(/ transform /g, ' ')
+        .replace(/:(path|rect)/g, '$1')
+        .replace(/<img ([^>]*)>/gi, '<image $1 />')
+        .replace(/<\/image>/g, '') // remove closing tags for images as they'll never have any content
+        .replace(/<image ([^>]*)([^\/])>/gi, '<image $1$2 />') // closes image tags for firefox
+        .replace(/width=(\d+)/g, 'width="$1"')
+        .replace(/height=(\d+)/g, 'height="$1"')
+        .replace(/hc-svg-href="/g, 'xlink:href="')
+        .replace(/style="([^"]+)"/g, function (s) {
+            return s.toLowerCase();
+        });
+
+    // IE9 beta bugs with innerHTML. Test again with final IE9.
+    svg = svg.replace(/(url\(#highcharts-[0-9]+)&quot;/g, '$1')
+        .replace(/&quot;/g, "'");
+    if (svg.match(/ xmlns="/g).length == 2) {
+        svg = svg.replace(/xmlns="[^"]+"/, '');
+    }
+
+    return svg;
+}
+</script>
+<style type="text/css">
+@media (min-width: 800px) {
+  .container {
+    max-width: 800px;
+  }
+}
+textarea {
+	font-family: Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+}
+.tablechart {
+	width: 700px;
+	margin: auto;
+	padding-top: 20px;
+	padding-bottom: 20px;
+}
+.chart {
+	padding-top: 20px;
+	padding-bottom: 20px;
+}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="page-header">
+<h1 id="title">corei7920@2.67_win64_vc2013</h1>
+</div>
+<div id="main"></div>
+<h2>Source CSV</h2>
+<textarea id="textInput" class="form-control" rows="5" readonly>
+Type,Function,Digit,Time(ms)
+u32toa,null,1,2.912746
+u32toa,null,2,2.836804
+u32toa,null,3,2.746163
+u32toa,null,4,2.778360
+u32toa,null,5,2.660772
+u32toa,null,6,2.657273
+u32toa,null,7,2.716417
+u32toa,null,8,2.753163
+u32toa,null,9,2.900847
+u32toa,null,10,2.769261
+u32toa,sprintf,1,98.686552
+u32toa,sprintf,2,106.216016
+u32toa,sprintf,3,117.226917
+u32toa,sprintf,4,134.829731
+u32toa,sprintf,5,149.286722
+u32toa,sprintf,6,162.018393
+u32toa,sprintf,7,176.964634
+u32toa,sprintf,8,195.164485
+u32toa,sprintf,9,207.143735
+u32toa,sprintf,10,224.803592
+u32toa,naive,1,7.790887
+u32toa,naive,2,9.242886
+u32toa,naive,3,13.200273
+u32toa,naive,4,15.494983
+u32toa,naive,5,18.692249
+u32toa,naive,6,20.942165
+u32toa,naive,7,25.090632
+u32toa,naive,8,26.554879
+u32toa,naive,9,30.972468
+u32toa,naive,10,34.044447
+u32toa,lut,1,6.653506
+u32toa,lut,2,7.478370
+u32toa,lut,3,9.491010
+u32toa,lut,4,10.894713
+u32toa,lut,5,11.872511
+u32toa,lut,6,13.897400
+u32toa,lut,7,15.476435
+u32toa,lut,8,16.122818
+u32toa,lut,9,19.493666
+u32toa,lut,10,19.466719
+u32toa,count,1,6.807140
+u32toa,count,2,8.368677
+u32toa,count,3,10.542650
+u32toa,count,4,12.357211
+u32toa,count,5,15.026732
+u32toa,count,6,17.926179
+u32toa,count,7,20.145998
+u32toa,count,8,23.053494
+u32toa,count,9,25.442345
+u32toa,count,10,28.419484
+u32toa,countlut,1,8.675945
+u32toa,countlut,2,9.131947
+u32toa,countlut,3,9.175343
+u32toa,countlut,4,9.984808
+u32toa,countlut,5,10.263379
+u32toa,countlut,6,10.877565
+u32toa,countlut,7,10.829270
+u32toa,countlut,8,11.217379
+u32toa,countlut,9,12.620733
+u32toa,countlut,10,12.730972
+u32toa,branchlut,1,5.485678
+u32toa,branchlut,2,4.943234
+u32toa,branchlut,3,4.561424
+u32toa,branchlut,4,4.458885
+u32toa,branchlut,5,7.782488
+u32toa,branchlut,6,8.285035
+u32toa,branchlut,7,8.690993
+u32toa,branchlut,8,9.154695
+u32toa,branchlut,9,11.484402
+u32toa,branchlut,10,10.730930
+u32toa,vc,1,11.359815
+u32toa,vc,2,19.053762
+u32toa,vc,3,23.268022
+u32toa,vc,4,32.582650
+u32toa,vc,5,43.075255
+u32toa,vc,6,53.780288
+u32toa,vc,7,63.941478
+u32toa,vc,8,75.100763
+u32toa,vc,9,87.515368
+u32toa,vc,10,99.594357
+i32toa,null,1,2.553684
+i32toa,null,2,2.349655
+i32toa,null,3,2.270213
+i32toa,null,4,2.387451
+i32toa,null,5,2.336356
+i32toa,null,6,2.311159
+i32toa,null,7,2.267413
+i32toa,null,8,2.299260
+i32toa,null,9,2.284562
+i32toa,null,10,2.371703
+i32toa,sprintf,1,94.832054
+i32toa,sprintf,2,105.902799
+i32toa,sprintf,3,115.266772
+i32toa,sprintf,4,132.617611
+i32toa,sprintf,5,143.232004
+i32toa,sprintf,6,159.839171
+i32toa,sprintf,7,174.317510
+i32toa,sprintf,8,190.631058
+i32toa,sprintf,9,206.423510
+i32toa,sprintf,10,227.421669
+i32toa,naive,1,9.008760
+i32toa,naive,2,10.266529
+i32toa,naive,3,13.464145
+i32toa,naive,4,16.222557
+i32toa,naive,5,18.918326
+i32toa,naive,6,21.542702
+i32toa,naive,7,24.806461
+i32toa,naive,8,28.019826
+i32toa,naive,9,31.429520
+i32toa,naive,10,34.262475
+i32toa,lut,1,7.462271
+i32toa,lut,2,8.274187
+i32toa,lut,3,10.401265
+i32toa,lut,4,11.478802
+i32toa,lut,5,13.067986
+i32toa,lut,6,14.243864
+i32toa,lut,7,15.892542
+i32toa,lut,8,17.590914
+i32toa,lut,9,20.086154
+i32toa,lut,10,21.196938
+i32toa,count,1,7.028667
+i32toa,count,2,8.078207
+i32toa,count,3,10.349470
+i32toa,count,4,12.789065
+i32toa,count,5,14.800656
+i32toa,count,6,17.190556
+i32toa,count,7,20.902619
+i32toa,count,8,23.068193
+i32toa,count,9,25.568332
+i32toa,count,10,28.943730
+i32toa,countlut,1,8.909020
+i32toa,countlut,2,10.117444
+i32toa,countlut,3,10.380967
+i32toa,countlut,4,10.765227
+i32toa,countlut,5,11.074244
+i32toa,countlut,6,10.801623
+i32toa,countlut,7,11.774171
+i32toa,countlut,8,11.938654
+i32toa,countlut,9,13.918398
+i32toa,countlut,10,14.157073
+i32toa,branchlut,1,6.597162
+i32toa,branchlut,2,5.956028
+i32toa,branchlut,3,5.791896
+i32toa,branchlut,4,5.271500
+i32toa,branchlut,5,8.420471
+i32toa,branchlut,6,8.673495
+i32toa,branchlut,7,9.114799
+i32toa,branchlut,8,8.641298
+i32toa,branchlut,9,11.031199
+i32toa,branchlut,10,10.775726
+i32toa,vc,1,7.210648
+i32toa,vc,2,9.797578
+i32toa,vc,3,13.333959
+i32toa,vc,4,17.201055
+i32toa,vc,5,23.727874
+i32toa,vc,6,31.322781
+i32toa,vc,7,36.063037
+i32toa,vc,8,45.349318
+i32toa,vc,9,53.255343
+i32toa,vc,10,63.066219
+u64toa,null,1,2.264264
+u64toa,null,2,2.447645
+u64toa,null,3,2.289811
+u64toa,null,4,2.526036
+u64toa,null,5,2.370653
+u64toa,null,6,2.355604
+u64toa,null,7,2.370653
+u64toa,null,8,2.356304
+u64toa,null,9,2.361554
+u64toa,null,10,2.429796
+u64toa,null,11,2.567682
+u64toa,null,12,2.320958
+u64toa,null,13,2.419648
+u64toa,null,14,2.281762
+u64toa,null,15,2.419648
+u64toa,null,16,2.549484
+u64toa,null,17,2.414398
+u64toa,null,18,2.342306
+u64toa,null,19,2.266364
+u64toa,null,20,2.427347
+u64toa,sprintf,1,100.170047
+u64toa,sprintf,2,111.248841
+u64toa,sprintf,3,123.733438
+u64toa,sprintf,4,139.057289
+u64toa,sprintf,5,151.585982
+u64toa,sprintf,6,165.744805
+u64toa,sprintf,7,180.908722
+u64toa,sprintf,8,197.705919
+u64toa,sprintf,9,213.453226
+u64toa,sprintf,10,232.363503
+u64toa,sprintf,11,246.525125
+u64toa,sprintf,12,260.187699
+u64toa,sprintf,13,278.156574
+u64toa,sprintf,14,295.747139
+u64toa,sprintf,15,311.966546
+u64toa,sprintf,16,328.041419
+u64toa,sprintf,17,350.316594
+u64toa,sprintf,18,368.824413
+u64toa,sprintf,19,384.425435
+u64toa,sprintf,20,404.340457
+u64toa,naive,1,8.154499
+u64toa,naive,2,9.703087
+u64toa,naive,3,13.949544
+u64toa,naive,4,18.261794
+u64toa,naive,5,21.444012
+u64toa,naive,6,26.079979
+u64toa,naive,7,31.708791
+u64toa,naive,8,35.328114
+u64toa,naive,9,39.872039
+u64toa,naive,10,44.204937
+u64toa,naive,11,48.922445
+u64toa,naive,12,52.395133
+u64toa,naive,13,59.417850
+u64toa,naive,14,62.060074
+u64toa,naive,15,65.222694
+u64toa,naive,16,72.895993
+u64toa,naive,17,76.790037
+u64toa,naive,18,82.726118
+u64toa,naive,19,84.734208
+u64toa,naive,20,92.077142
+u64toa,lut,1,6.349387
+u64toa,lut,2,7.523515
+u64toa,lut,3,9.804927
+u64toa,lut,4,11.333917
+u64toa,lut,5,14.363201
+u64toa,lut,6,15.473285
+u64toa,lut,7,20.181344
+u64toa,lut,8,22.198534
+u64toa,lut,9,26.112875
+u64toa,lut,10,28.284748
+u64toa,lut,11,32.047206
+u64toa,lut,12,33.678036
+u64toa,lut,13,38.093875
+u64toa,lut,14,38.632819
+u64toa,lut,15,43.395122
+u64toa,lut,16,45.565945
+u64toa,lut,17,48.804157
+u64toa,lut,18,53.473720
+u64toa,lut,19,54.007064
+u64toa,lut,20,57.489201
+u64toa,count,1,9.768181
+u64toa,count,2,9.950162
+u64toa,count,3,12.906303
+u64toa,count,4,16.510927
+u64toa,count,5,19.495066
+u64toa,count,6,23.320167
+u64toa,count,7,27.768902
+u64toa,count,8,30.855230
+u64toa,count,9,35.768018
+u64toa,count,10,39.827944
+u64toa,count,11,42.194747
+u64toa,count,12,46.611286
+u64toa,count,13,50.028680
+u64toa,count,14,55.329576
+u64toa,count,15,55.973159
+u64toa,count,16,60.874048
+u64toa,count,17,70.144580
+u64toa,count,18,74.708804
+u64toa,count,19,75.060867
+u64toa,count,20,77.306583
+u64toa,countlut,1,8.580405
+u64toa,countlut,2,9.288381
+u64toa,countlut,3,9.549454
+u64toa,countlut,4,9.742633
+u64toa,countlut,5,12.081789
+u64toa,countlut,6,12.757569
+u64toa,countlut,7,16.452133
+u64toa,countlut,8,17.911131
+u64toa,countlut,9,20.979961
+u64toa,countlut,10,22.343069
+u64toa,countlut,11,25.932644
+u64toa,countlut,12,26.618922
+u64toa,countlut,13,30.493018
+u64toa,countlut,14,30.671499
+u64toa,countlut,15,34.430807
+u64toa,countlut,16,35.385857
+u64toa,countlut,17,38.155468
+u64toa,countlut,18,40.318593
+u64toa,countlut,19,43.333528
+u64toa,countlut,20,45.278975
+u64toa,branchlut,1,5.247702
+u64toa,branchlut,2,4.903338
+u64toa,branchlut,3,4.678312
+u64toa,branchlut,4,4.778051
+u64toa,branchlut,5,7.634453
+u64toa,branchlut,6,7.907425
+u64toa,branchlut,7,8.132451
+u64toa,branchlut,8,7.941021
+u64toa,branchlut,9,16.267702
+u64toa,branchlut,10,16.318097
+u64toa,branchlut,11,17.183557
+u64toa,branchlut,12,17.924080
+u64toa,branchlut,13,18.229948
+u64toa,branchlut,14,18.340886
+u64toa,branchlut,15,18.222249
+u64toa,branchlut,16,18.018570
+u64toa,branchlut,17,27.112371
+u64toa,branchlut,18,26.811402
+u64toa,branchlut,19,28.225955
+u64toa,branchlut,20,28.474779
+u64toa,vc,1,11.410559
+u64toa,vc,2,17.168858
+u64toa,vc,3,23.114738
+u64toa,vc,4,33.922310
+u64toa,vc,5,44.616494
+u64toa,vc,6,55.736934
+u64toa,vc,7,64.177703
+u64toa,vc,8,76.376730
+u64toa,vc,9,86.301344
+u64toa,vc,10,102.147691
+u64toa,vc,11,110.366933
+u64toa,vc,12,122.847681
+u64toa,vc,13,133.308089
+u64toa,vc,14,146.835578
+u64toa,vc,15,159.729282
+u64toa,vc,16,170.671940
+u64toa,vc,17,183.741327
+u64toa,vc,18,197.495591
+u64toa,vc,19,209.342555
+u64toa,vc,20,225.572811
+i64toa,null,1,2.634875
+i64toa,null,2,2.568032
+i64toa,null,3,2.504689
+i64toa,null,4,2.566282
+i64toa,null,5,2.522887
+i64toa,null,6,2.365053
+i64toa,null,7,2.432596
+i64toa,null,8,2.433296
+i64toa,null,9,2.395150
+i64toa,null,10,2.337056
+i64toa,null,11,2.687370
+i64toa,null,12,2.528486
+i64toa,null,13,2.480891
+i64toa,null,14,2.287011
+i64toa,null,15,2.754563
+i64toa,null,16,2.323758
+i64toa,null,17,2.288061
+i64toa,null,18,2.324107
+i64toa,null,19,2.301360
+i64toa,null,20,2.271613
+i64toa,sprintf,1,101.490459
+i64toa,sprintf,2,111.484017
+i64toa,sprintf,3,124.014459
+i64toa,sprintf,4,141.068879
+i64toa,sprintf,5,151.005743
+i64toa,sprintf,6,165.987679
+i64toa,sprintf,7,180.297686
+i64toa,sprintf,8,201.531020
+i64toa,sprintf,9,221.742111
+i64toa,sprintf,10,238.513761
+i64toa,sprintf,11,243.818158
+i64toa,sprintf,12,259.566864
+i64toa,sprintf,13,277.777564
+i64toa,sprintf,14,295.430772
+i64toa,sprintf,15,312.385803
+i64toa,sprintf,16,329.195248
+i64toa,sprintf,17,348.763457
+i64toa,sprintf,18,364.873325
+i64toa,sprintf,19,380.974095
+i64toa,sprintf,20,400.261283
+i64toa,naive,1,9.425916
+i64toa,naive,2,10.544400
+i64toa,naive,3,13.743766
+i64toa,naive,4,18.423128
+i64toa,naive,5,21.729233
+i64toa,naive,6,26.791804
+i64toa,naive,7,31.306683
+i64toa,naive,8,35.377108
+i64toa,naive,9,41.095162
+i64toa,naive,10,44.106597
+i64toa,naive,11,48.294260
+i64toa,naive,12,53.298738
+i64toa,naive,13,56.424962
+i64toa,naive,14,60.890496
+i64toa,naive,15,65.891824
+i64toa,naive,16,70.617031
+i64toa,naive,17,79.867266
+i64toa,naive,18,81.487247
+i64toa,naive,19,86.051121
+i64toa,naive,20,83.530334
+i64toa,lut,1,7.053864
+i64toa,lut,2,8.267537
+i64toa,lut,3,11.179583
+i64toa,lut,4,12.325364
+i64toa,lut,5,14.527334
+i64toa,lut,6,15.928938
+i64toa,lut,7,21.014257
+i64toa,lut,8,22.235980
+i64toa,lut,9,27.054627
+i64toa,lut,10,28.340043
+i64toa,lut,11,34.055296
+i64toa,lut,12,34.910607
+i64toa,lut,13,39.824444
+i64toa,lut,14,40.690604
+i64toa,lut,15,44.579748
+i64toa,lut,16,46.329216
+i64toa,lut,17,50.955733
+i64toa,lut,18,56.259779
+i64toa,lut,19,55.501058
+i64toa,lut,20,56.544650
+i64toa,count,1,10.130043
+i64toa,count,2,10.353670
+i64toa,count,3,12.890555
+i64toa,count,4,16.600868
+i64toa,count,5,20.621598
+i64toa,count,6,24.371107
+i64toa,count,7,26.132823
+i64toa,count,8,31.877474
+i64toa,count,9,35.166430
+i64toa,count,10,39.277101
+i64toa,count,11,42.608054
+i64toa,count,12,47.426701
+i64toa,count,13,50.464734
+i64toa,count,14,53.610556
+i64toa,count,15,57.030749
+i64toa,count,16,62.428586
+i64toa,count,17,65.830231
+i64toa,count,18,68.829768
+i64toa,count,19,74.447031
+i64toa,count,20,74.336793
+i64toa,countlut,1,8.726689
+i64toa,countlut,2,9.342975
+i64toa,countlut,3,9.400019
+i64toa,countlut,4,9.492759
+i64toa,countlut,5,11.609339
+i64toa,countlut,6,13.136229
+i64toa,countlut,7,16.328596
+i64toa,countlut,8,16.607167
+i64toa,countlut,9,20.402521
+i64toa,countlut,10,22.035801
+i64toa,countlut,11,25.412248
+i64toa,countlut,12,27.129869
+i64toa,countlut,13,30.362832
+i64toa,countlut,14,33.636390
+i64toa,countlut,15,35.700475
+i64toa,countlut,16,37.596577
+i64toa,countlut,17,40.710902
+i64toa,countlut,18,40.728050
+i64toa,countlut,19,43.204042
+i64toa,countlut,20,42.825031
+i64toa,branchlut,1,6.397332
+i64toa,branchlut,2,5.909483
+i64toa,branchlut,3,5.418485
+i64toa,branchlut,4,5.173160
+i64toa,branchlut,5,7.856680
+i64toa,branchlut,6,8.034812
+i64toa,branchlut,7,8.534209
+i64toa,branchlut,8,8.847777
+i64toa,branchlut,9,16.079072
+i64toa,branchlut,10,16.663861
+i64toa,branchlut,11,17.577266
+i64toa,branchlut,12,18.453574
+i64toa,branchlut,13,17.678055
+i64toa,branchlut,14,18.284542
+i64toa,branchlut,15,18.984469
+i64toa,branchlut,16,18.356984
+i64toa,branchlut,17,27.407390
+i64toa,branchlut,18,27.163116
+i64toa,branchlut,19,28.707854
+i64toa,branchlut,20,28.193408
+i64toa,vc,1,13.239118
+i64toa,vc,2,19.648000
+i64toa,vc,3,26.577627
+i64toa,vc,4,35.634682
+i64toa,vc,5,46.626685
+i64toa,vc,6,58.228674
+i64toa,vc,7,69.183231
+i64toa,vc,8,79.261479
+i64toa,vc,9,90.848420
+i64toa,vc,10,102.041652
+i64toa,vc,11,116.490944
+i64toa,vc,12,124.266433
+i64toa,vc,13,135.123700
+i64toa,vc,14,148.214434
+i64toa,vc,15,160.334369
+i64toa,vc,16,174.829507
+i64toa,vc,17,187.164319
+i64toa,vc,18,196.376058
+i64toa,vc,19,212.323544
+i64toa,vc,20,216.882168
+</textarea>
+</div>
+<div class="row" id="downloadDD" style="display: none">
+<div class="btn-group pull-right" >
+    <button class="btn dropdown-toggle" data-toggle="dropdown"><span class="glyphicon glyphicon-picture"></span></button>
+    <ul class="dropdown-menu">
+        <li><a tabindex="-1" href="#" dltype="image/jpeg">JPEG</a></li>
+        <li><a tabindex="-1" href="#" dltype="image/png">PNG</a></li>
+        <li><a tabindex="-1" href="#" dltype="application/pdf">PDF</a></li>
+        <li><a tabindex="-1" href="#" dltype="image/svg+xml">SVG</a></li>
+    </ul>
+</div>
+</div>
+<form method="post" action="http://export.highcharts.com/" id="imageGetForm">
+    <input type="hidden" name="filename" id="imageFilename" value="" />
+    <input type="hidden" name="type" id="imageGetFormTYPE" value="" />
+    <input type="hidden" name="width" value="900" />
+    <input type="hidden" name="svg" value="" id="imageGetFormSVG" />
+</form>
+</div>
+</body>
+</html>

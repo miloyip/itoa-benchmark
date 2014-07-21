@@ -177,7 +177,19 @@ void Verify() {
 #define BENCH(type, f) bench(type##_##f, STRINGIFY(type), STRINGIFY(f), fp)
 
 void Bench() {
-	FILE *fp = fopen("result.csv", "w");
+	// Try to write to /result path, where template.php exists
+	FILE *fp;
+	if ((fp = fopen("../../result/template.php", "r")) != NULL) {
+		fclose(fp);
+		fp = fopen("../../result/result.csv", "w");
+	}
+	else if ((fp = fopen("../result/template.php", "r")) != NULL) {
+		fclose(fp);
+		fp = fopen("../result/result.csv", "w");
+	}
+	else
+		fp = fopen("result.csv", "w");
+
 	fprintf(fp, "Type,Function,Digit,Time(ms)\n");
 
 	puts("u32toa");
