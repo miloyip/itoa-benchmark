@@ -18,7 +18,7 @@
 #include "sse2.h"
 
 const unsigned kIterationPerDigit = 1000000;
-const unsigned kIterationForRandom = 100;
+const unsigned kIterationForRandom = 1000;
 
 template <typename T>
 struct Traits {
@@ -114,8 +114,10 @@ private:
 		for (int digit = 1; digit <= Traits<T>::kMaxDigit; digit++) {
 			T end = (digit == Traits<T>::kMaxDigit) ? std::numeric_limits<T>::max() : start * 10;
 			T v = start;
+			T sign = 1;
 			for (size_t i = 0; i < kCountPerDigit; i++) {
-				*p++ = v;
+				*p++ = v * sign;
+				sign = Traits<T>::Negate(sign);
 				if (v++ == end)
 					v = start;
 			}
@@ -143,10 +145,12 @@ void benchSequential(void(*f)(T, char*), const char* type, const char* fname, FI
 		T end = (digit == Traits<T>::kMaxDigit) ? std::numeric_limits<T>::max() : start * 10;
 
 		T v = start;
+		T sign = 1;
 		Timer timer;
 		timer.Start();
 		for (unsigned iteration = 0; iteration < kIterationPerDigit; iteration++) {
-			f(v, buffer);
+			f(v * sign, buffer);
+			sign = Traits<T>::Negate(sign);
 			if (v++ == end)
 				v = start;
 		}
