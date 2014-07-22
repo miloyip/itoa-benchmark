@@ -183,7 +183,8 @@ function drawDigitChart(type, timeDigitData) {
 		vAxis: {
 			title: "Time (ms) in log scale",
 			logScale: true,
-			minorGridlines: { count: 10 }
+			minorGridlines: { count: 10 },
+      baseline: 0
 		},
 		width: 800,
 		height: 600
