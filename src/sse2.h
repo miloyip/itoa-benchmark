@@ -1,19 +1,27 @@
 #pragma once
 
-//#if defined(_MSC_VER) && _M_IX86_FP >= 2
+#if defined(i386) || defined(__amd64) || defined(_M_IX86) || defined(_M_X64)
 
 #include <cassert>
 #include <emmintrin.h>
 #include "digitslut.h"
 
 // SSE2 implementation according to http://0x80.pl/articles/sse-itoa.html
-// Accept all ranges.
+// Modifications: (1) fix incorrect digits (2) accept all ranges (3) write to user provided buffer.
+
+#ifdef _MSC_VER
+#define ALIGN_PRE __declspec(align(16))
+#define ALIGN_SUF
+#else
+#define ALIGN_PRE
+#define ALIGN_SUF  __attribute__ ((aligned(16)))
+#endif
 
 const uint32_t kDiv10000 = 0xd1b71759;
-__declspec(align(16)) const uint32_t kDiv10000Vector[4] = { kDiv10000, kDiv10000, kDiv10000, kDiv10000 };
-__declspec(align(16)) const uint32_t k10000Vector[4] = { 10000,  10000, 10000, 10000 };
-__declspec(align(16)) const uint16_t kDivPowersVector[8] = { 8389, 5243, 13108, 32768, 8389, 5243, 13108, 32768 }; // 10^3, 10^2, 10^1, 10^0
-__declspec(align(16)) const uint16_t kShiftPowersVector[8] = {
+ALIGN_PRE const uint32_t kDiv10000Vector[4] ALIGN_SUF = { kDiv10000, kDiv10000, kDiv10000, kDiv10000 };
+ALIGN_PRE const uint32_t k10000Vector[4] ALIGN_SUF = { 10000, 10000, 10000, 10000 };
+ALIGN_PRE const uint16_t kDivPowersVector[8] ALIGN_SUF = { 8389, 5243, 13108, 32768, 8389, 5243, 13108, 32768 }; // 10^3, 10^2, 10^1, 10^0
+ALIGN_PRE const uint16_t kShiftPowersVector[8] ALIGN_SUF = {
     1 << (16 - (23 + 2 - 16)),
     1 << (16 - (19 + 2 - 16)),
     1 << (16 - 1 - 2),
@@ -23,8 +31,8 @@ __declspec(align(16)) const uint16_t kShiftPowersVector[8] = {
     1 << (16 - 1 - 2),
     1 << (15)
 };
-__declspec(align(16)) const uint16_t k10Vector[8] = { 10, 10, 10, 10, 10, 10, 10, 10 };
-__declspec(align(16)) const char kAsciiZero[16] = { '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0' };
+ALIGN_PRE const uint16_t k10Vector[8] ALIGN_SUF = { 10, 10, 10, 10, 10, 10, 10, 10 };
+ALIGN_PRE const char kAsciiZero[16] ALIGN_SUF = { '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0' };
 
 inline __m128i Convert8DigitsSSE2(uint32_t value) {
 	assert(value <= 99999999);
@@ -91,6 +99,8 @@ inline void u32toa_sse2(uint32_t value, char* buffer) {
 		*buffer++ = '\0';
 	}
     else if (value < 100000000) {
+		// Experiment shows that this case SSE2 is slower
+#if 0
 		const __m128i a = Convert8DigitsSSE2(value);
 		
 		// Convert to bytes, add '0'
@@ -99,13 +109,42 @@ inline void u32toa_sse2(uint32_t value, char* buffer) {
 		// Count number of digit
 		const unsigned mask = _mm_movemask_epi8(_mm_cmpeq_epi8(va, reinterpret_cast<const __m128i*>(kAsciiZero)[0]));
         unsigned long digit;
+#ifdef _MSC_VER
 		_BitScanForward(&digit, ~mask | 0x8000);
+#else
+		digit = __builtin_ctz(~mask | 0x8000);
+#endif
 
 		// Shift digits to the beginning
 		__m128i result = ShiftDigits_SSE2(va, digit);
 		//__m128i result = _mm_srl_epi64(va, _mm_cvtsi32_si128(digit * 8));
 		_mm_storel_epi64(reinterpret_cast<__m128i*>(buffer), result);
 		buffer[8 - digit] = '\0';
+#else
+		// value = bbbbcccc
+		const uint32_t b = value / 10000;
+		const uint32_t c = value % 10000;
+
+		const uint32_t d1 = (b / 100) << 1;
+		const uint32_t d2 = (b % 100) << 1;
+
+		const uint32_t d3 = (c / 100) << 1;
+		const uint32_t d4 = (c % 100) << 1;
+
+		if (value >= 10000000)
+			*buffer++ = gDigitsLut[d1];
+		if (value >= 1000000)
+			*buffer++ = gDigitsLut[d1 + 1];
+		if (value >= 100000)
+			*buffer++ = gDigitsLut[d2];
+		*buffer++ = gDigitsLut[d2 + 1];
+
+		*buffer++ = gDigitsLut[d3];
+		*buffer++ = gDigitsLut[d3 + 1];
+		*buffer++ = gDigitsLut[d4];
+		*buffer++ = gDigitsLut[d4 + 1];
+		*buffer++ = '\0';
+#endif
     }
     else {
         // value = aabbbbbbbb in decimal
@@ -155,6 +194,8 @@ inline void u64toa_sse2(uint64_t value, char* buffer) {
 			*buffer++ = '\0';
         }
         else {
+			// Experiment shows that this case SSE2 is slower
+#if 0
 			const __m128i a = Convert8DigitsSSE2(v);
 		
 			// Convert to bytes, add '0'
@@ -163,12 +204,41 @@ inline void u64toa_sse2(uint64_t value, char* buffer) {
 			// Count number of digit
 			const unsigned mask = _mm_movemask_epi8(_mm_cmpeq_epi8(va, reinterpret_cast<const __m128i*>(kAsciiZero)[0]));
 			unsigned long digit;
+#ifdef _MSC_VER
 			_BitScanForward(&digit, ~mask | 0x8000);
+#else
+			digit = __builtin_ctz(~mask | 0x8000);
+#endif
 
 			// Shift digits to the beginning
 			__m128i result = ShiftDigits_SSE2(va, digit);
 			_mm_storel_epi64(reinterpret_cast<__m128i*>(buffer), result);
 			buffer[8 - digit] = '\0';
+#else
+			// value = bbbbcccc
+			const uint32_t b = v / 10000;
+			const uint32_t c = v % 10000;
+
+			const uint32_t d1 = (b / 100) << 1;
+			const uint32_t d2 = (b % 100) << 1;
+
+			const uint32_t d3 = (c / 100) << 1;
+			const uint32_t d4 = (c % 100) << 1;
+
+			if (value >= 10000000)
+				*buffer++ = gDigitsLut[d1];
+			if (value >= 1000000)
+				*buffer++ = gDigitsLut[d1 + 1];
+			if (value >= 100000)
+				*buffer++ = gDigitsLut[d2];
+			*buffer++ = gDigitsLut[d2 + 1];
+
+			*buffer++ = gDigitsLut[d3];
+			*buffer++ = gDigitsLut[d3 + 1];
+			*buffer++ = gDigitsLut[d4];
+			*buffer++ = gDigitsLut[d4 + 1];
+			*buffer++ = '\0';
+#endif
         }
     }
     else if (value < 10000000000000000) {
@@ -184,7 +254,11 @@ inline void u64toa_sse2(uint64_t value, char* buffer) {
 		// Count number of digit
 		const unsigned mask = _mm_movemask_epi8(_mm_cmpeq_epi8(va, reinterpret_cast<const __m128i*>(kAsciiZero)[0]));
 		unsigned long digit;
+#ifdef _MSC_VER
 		_BitScanForward(&digit, ~mask | 0x8000);
+#else
+		digit = __builtin_ctz(~mask | 0x8000);
+#endif
 
 		// Shift digits to the beginning
 		__m128i result = ShiftDigits_SSE2(va, digit);
@@ -240,4 +314,4 @@ inline void i64toa_sse2(int64_t value, char* buffer) {
 	u64toa_sse2(static_cast<uint64_t>(value), buffer);
 }
 
-//#endif 
+#endif 
