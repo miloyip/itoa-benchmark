@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,6 +18,7 @@
 #include "sse2.h"
 
 const unsigned kIterationPerDigit = 1000000;
+const unsigned kIterationForRandom = 100;
 
 template <typename T>
 struct Traits {
@@ -92,9 +94,45 @@ static void verify(void(*f)(T, char*), void(*g)(T, char*), const char* fname, co
 	printf("OK\n");
 }
 
+template <class T>
+class RandomData {
+public:
+	static T* GetData() {
+		static RandomData singleton;
+		return singleton.mData;
+	}
+
+	static const size_t kCountPerDigit = 1000;
+	static const size_t kCount = kCountPerDigit * Traits<T>::kMaxDigit;
+
+private:
+	RandomData() :
+		mData(new T[kCount])
+	{
+		T* p = mData;
+		T start = 1;
+		for (int digit = 1; digit <= Traits<T>::kMaxDigit; digit++) {
+			T end = (digit == Traits<T>::kMaxDigit) ? std::numeric_limits<T>::max() : start * 10;
+			T v = start;
+			for (size_t i = 0; i < kCountPerDigit; i++) {
+				*p++ = v;
+				if (v++ == end)
+					v = start;
+			}
+		}
+		std::random_shuffle(mData, mData + kCount);
+	}
+
+	~RandomData() {
+		delete[] mData;
+	}
+
+	T* mData;
+};
+
 template <typename T>
-void bench(void(*f)(T, char*), const char* type, const char* fname, FILE* fp) {
-	printf("Benchmarking %-20s ... ", fname);
+void benchSequential(void(*f)(T, char*), const char* type, const char* fname, FILE* fp) {
+	printf("Benchmarking sequential %-20s ... ", fname);
 
 	char buffer[Traits<T>::kBufferSize];
 	double minDuration = 0.0;
@@ -119,11 +157,39 @@ void bench(void(*f)(T, char*), const char* type, const char* fname, FILE* fp) {
 			minDuration = duration;
 		if (maxDuration < duration)
 			maxDuration = duration;
-		fprintf(fp, "%s,%s,%d,%f\n", type, fname, digit, duration);
+		fprintf(fp, "%s_sequential,%s,%d,%f\n", type, fname, digit, duration);
 		start = end;
 	}
 
 	printf("[%8.3fms, %8.3fms]\n", minDuration, maxDuration);
+}
+
+template <typename T>
+void benchRandom(void(*f)(T, char*), const char* type, const char* fname, FILE* fp) {
+	printf("Benchmarking     random %-20s ... ", fname);
+
+	char buffer[Traits<T>::kBufferSize];
+	T* data = RandomData<T>::GetData();
+	size_t n = RandomData<T>::kCount;
+
+	Timer timer;
+	timer.Start();
+
+	for (unsigned iteration = 0; iteration < kIterationForRandom; iteration++)
+		for (size_t i = 0; i < n; i++)
+			f(data[i], buffer);
+	
+	timer.Stop();
+	double duration = timer.GetElapsedMilliseconds();
+	fprintf(fp, "%s_random,%s,0,%f\n", type, fname, duration);
+
+	printf("%8.3fms\n", duration);
+}
+
+template <typename T>
+void bench(void(*f)(T, char*), const char* type, const char* fname, FILE* fp) {
+	benchSequential(f, type, fname, fp);
+	benchRandom(f, type, fname, fp);
 }
 
 #define STRINGIFY(x) #x
