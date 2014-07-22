@@ -77,9 +77,12 @@ $(function() {
 	}
 
 	for (var type in timeData) {
-		var header = document.createElement("h2");
-		header.innerHTML = type;
-		$("#main").append(header);
+		$("#main").append(
+      $("<a>", {name: type}),
+      $("<h2>", {style: "padding-top: 70px; margin-top: -70px;"}).append(type)
+    );
+
+    $("#section").append($("<li>").append($("<a>", {href: "#" + type}).append(type)));
 
 		drawTable(type, timeData[type]);
 		drawBarChart(type, timeData[type]);
@@ -102,6 +105,21 @@ $(function() {
 	    });		
 		$(this).after(d);
 	});
+
+  // Add configurations
+  var thisConfig = <?="\"".basename($argv[1], '.'.pathinfo($argv[1], PATHINFO_EXTENSION))."\""?>;
+  var configurations = [<?=
+    implode(",", 
+      array_map(
+        function ($filename) {
+          return "\"" . basename($filename, ".html") . "\"";
+        }, glob("*.html")))
+    ?>];
+
+  for (var i in configurations) {
+    var c = configurations[i];
+    $("#configuration").append($("<li>", {class : (c == thisConfig ? "active" : "")}).append($("<a>", {href: c + ".html"}).append(c)));
+  }
 });
 
 function drawTable(type, timeData) {
@@ -260,10 +278,42 @@ textarea {
 	padding-top: 20px;
 	padding-bottom: 20px;
 }
+body { padding-top: 70px; }
 </style>
 </head>
 <body>
 <div class="container">
+<nav class="navbar navbar-default navbar-fixed-top" role="navigation">
+  <div class="container">
+    <!-- Brand and toggle get grouped for better mobile display -->
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="https://github.com/miloyip/itoa-benchmark"><span class="glyphicon glyphicon-home"></span> itoa-benchmark</a>
+    </div>
+
+    <!-- Collect the nav links, forms, and other content for toggling -->
+    <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+      <ul class="nav navbar-nav">
+        <li class="dropdown">
+          <a href="#" class="dropdown-toggle" data-toggle="dropdown">Configuration <span class="caret"></span></a>
+          <ul class="dropdown-menu" role="menu" id="configuration">
+          </ul>
+        </li>
+        <li class="dropdown">
+          <a href="#" class="dropdown-toggle" data-toggle="dropdown">Section <span class="caret"></span></a>
+          <ul class="dropdown-menu" role="menu" id="section">
+          </ul>
+        </li>
+      </ul>
+      <p class="navbar-text navbar-right">Developed by <a href="https://github.com/miloyip" class="navbar-link">Milo Yip</a></p>
+    </div><!-- /.navbar-collapse -->
+  </div><!-- /.container-fluid -->
+</nav>
 <div class="page-header">
 <h1 id="title"><?=basename($argv[1], '.'.pathinfo($argv[1], PATHINFO_EXTENSION))?></h1>
 </div>
