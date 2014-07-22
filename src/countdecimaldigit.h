@@ -1,5 +1,10 @@
 #pragma once
 
+#include <stdint.h>
+#ifdef _MSC_VER
+#include "intrin.h"
+#endif
+
 inline unsigned CountDecimalDigit32(uint32_t n) {
 	static const uint32_t powers_of_10[] = {
 		0,

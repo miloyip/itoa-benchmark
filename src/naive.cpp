@@ -1,6 +1,7 @@
-#pragma once
+#include <stdint.h>
+#include "test.h"
 
-inline void u32toa_naive(uint32_t value, char* buffer) {
+void u32toa_naive(uint32_t value, char* buffer) {
 	char temp[10];
 	char *p = temp;
 	do {
@@ -15,7 +16,7 @@ inline void u32toa_naive(uint32_t value, char* buffer) {
 	*buffer = '\0';
 }
 
-inline void i32toa_naive(int32_t value, char* buffer) {
+void i32toa_naive(int32_t value, char* buffer) {
 	if (value < 0) {
 		*buffer++ = '-';
 		value = -value;
@@ -23,7 +24,7 @@ inline void i32toa_naive(int32_t value, char* buffer) {
 	u32toa_naive(static_cast<uint32_t>(value), buffer);
 }
 
-inline void u64toa_naive(uint64_t value, char* buffer) {
+void u64toa_naive(uint64_t value, char* buffer) {
 	char temp[20];
 	char *p = temp;
 	do {
@@ -38,10 +39,12 @@ inline void u64toa_naive(uint64_t value, char* buffer) {
 	*buffer = '\0';
 }
 
-inline void i64toa_naive(int64_t value, char* buffer) {
+void i64toa_naive(int64_t value, char* buffer) {
 	if (value < 0) {
 		*buffer++ = '-';
 		value = -value;
 	}
 	u64toa_naive(static_cast<uint64_t>(value), buffer);
 }
+
+REGISTER_TEST(naive);

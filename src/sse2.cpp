@@ -1,13 +1,17 @@
-#pragma once
+// SSE2 implementation according to http://0x80.pl/articles/sse-itoa.html
+// Modifications: (1) fix incorrect digits (2) accept all ranges (3) write to user provided buffer.
 
 #if defined(i386) || defined(__amd64) || defined(_M_IX86) || defined(_M_X64)
 
 #include <cassert>
 #include <emmintrin.h>
+#include <stdint.h>
 #include "digitslut.h"
+#include "test.h"
 
-// SSE2 implementation according to http://0x80.pl/articles/sse-itoa.html
-// Modifications: (1) fix incorrect digits (2) accept all ranges (3) write to user provided buffer.
+#ifdef _MSC_VER
+#include "intrin.h"
+#endif
 
 #ifdef _MSC_VER
 #define ALIGN_PRE __declspec(align(16))
@@ -17,11 +21,11 @@
 #define ALIGN_SUF  __attribute__ ((aligned(16)))
 #endif
 
-const uint32_t kDiv10000 = 0xd1b71759;
-ALIGN_PRE const uint32_t kDiv10000Vector[4] ALIGN_SUF = { kDiv10000, kDiv10000, kDiv10000, kDiv10000 };
-ALIGN_PRE const uint32_t k10000Vector[4] ALIGN_SUF = { 10000, 10000, 10000, 10000 };
-ALIGN_PRE const uint16_t kDivPowersVector[8] ALIGN_SUF = { 8389, 5243, 13108, 32768, 8389, 5243, 13108, 32768 }; // 10^3, 10^2, 10^1, 10^0
-ALIGN_PRE const uint16_t kShiftPowersVector[8] ALIGN_SUF = {
+static const uint32_t kDiv10000 = 0xd1b71759;
+ALIGN_PRE static const uint32_t kDiv10000Vector[4] ALIGN_SUF = { kDiv10000, kDiv10000, kDiv10000, kDiv10000 };
+ALIGN_PRE static const uint32_t k10000Vector[4] ALIGN_SUF = { 10000, 10000, 10000, 10000 };
+ALIGN_PRE static const uint16_t kDivPowersVector[8] ALIGN_SUF = { 8389, 5243, 13108, 32768, 8389, 5243, 13108, 32768 }; // 10^3, 10^2, 10^1, 10^0
+ALIGN_PRE static const uint16_t kShiftPowersVector[8] ALIGN_SUF = {
     1 << (16 - (23 + 2 - 16)),
     1 << (16 - (19 + 2 - 16)),
     1 << (16 - 1 - 2),
@@ -31,8 +35,8 @@ ALIGN_PRE const uint16_t kShiftPowersVector[8] ALIGN_SUF = {
     1 << (16 - 1 - 2),
     1 << (15)
 };
-ALIGN_PRE const uint16_t k10Vector[8] ALIGN_SUF = { 10, 10, 10, 10, 10, 10, 10, 10 };
-ALIGN_PRE const char kAsciiZero[16] ALIGN_SUF = { '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0' };
+ALIGN_PRE static const uint16_t k10Vector[8] ALIGN_SUF = { 10, 10, 10, 10, 10, 10, 10, 10 };
+ALIGN_PRE static const char kAsciiZero[16] ALIGN_SUF = { '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0' };
 
 inline __m128i Convert8DigitsSSE2(uint32_t value) {
 	assert(value <= 99999999);
@@ -168,7 +172,7 @@ inline void u32toa_sse2(uint32_t value, char* buffer) {
 	}
 }
 
-inline void i32toa_sse2(int32_t value, char* buffer) {
+void i32toa_sse2(int32_t value, char* buffer) {
 	if (value < 0) {
 		*buffer++ = '-';
 		value = -value;
@@ -305,7 +309,7 @@ inline void u64toa_sse2(uint64_t value, char* buffer) {
     }
 }
 
-inline void i64toa_sse2(int64_t value, char* buffer) {
+void i64toa_sse2(int64_t value, char* buffer) {
 	if (value < 0) {
 		*buffer++ = '-';
 		value = -value;
@@ -314,4 +318,6 @@ inline void i64toa_sse2(int64_t value, char* buffer) {
 	u64toa_sse2(static_cast<uint64_t>(value), buffer);
 }
 
-#endif 
+REGISTER_TEST(sse2);
+
+#endif

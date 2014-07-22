@@ -1,11 +1,11 @@
-#pragma once
-
+#include <stdint.h>
 #include "digitslut.h"
+#include "test.h"
 
 // Branching for different cases (forward)
 // Use lookup table of two digits
 
-inline void u32toa_branchlut(uint32_t value, char* buffer) {
+void u32toa_branchlut(uint32_t value, char* buffer) {
     if (value < 10000) {
         const uint32_t d1 = (value / 100) << 1;
         const uint32_t d2 = (value % 100) << 1;
@@ -77,7 +77,7 @@ inline void u32toa_branchlut(uint32_t value, char* buffer) {
     *buffer++ = '\0';
 }
 
-inline void i32toa_branchlut(int32_t value, char* buffer) {
+void i32toa_branchlut(int32_t value, char* buffer) {
 	if (value < 0) {
 		*buffer++ = '-';
 		value = -value;
@@ -86,7 +86,7 @@ inline void i32toa_branchlut(int32_t value, char* buffer) {
 	u32toa_branchlut(static_cast<uint32_t>(value), buffer);
 }
 
-inline void u64toa_branchlut(uint64_t value, char* buffer) {
+void u64toa_branchlut(uint64_t value, char* buffer) {
     if (value < 100000000) {
         uint32_t v = static_cast<uint32_t>(value);
         if (v < 10000) {
@@ -243,7 +243,7 @@ inline void u64toa_branchlut(uint64_t value, char* buffer) {
 	*buffer = '\0';
 }
 
-inline void i64toa_branchlut(int64_t value, char* buffer) {
+void i64toa_branchlut(int64_t value, char* buffer) {
 	if (value < 0) {
 		*buffer++ = '-';
 		value = -value;
@@ -251,3 +251,5 @@ inline void i64toa_branchlut(int64_t value, char* buffer) {
 
 	u64toa_branchlut(static_cast<uint64_t>(value), buffer);
 }
+
+REGISTER_TEST(branchlut);

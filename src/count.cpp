@@ -1,10 +1,9 @@
-#pragma once
-
 #include "countdecimaldigit.h"
+#include "test.h"
 
 // Additional count number of digit pass 
 
-inline void u32toa_count(uint32_t value, char* buffer) {
+void u32toa_count(uint32_t value, char* buffer) {
 	unsigned digit = CountDecimalDigit32(value);
 	buffer += digit;
 	*buffer = '\0';
@@ -15,7 +14,7 @@ inline void u32toa_count(uint32_t value, char* buffer) {
 	} while (value > 0);
 }
 
-inline void i32toa_count(int32_t value, char* buffer) {
+void i32toa_count(int32_t value, char* buffer) {
 	if (value < 0) {
 		*buffer++ = '-';
 		value = -value;
@@ -23,7 +22,7 @@ inline void i32toa_count(int32_t value, char* buffer) {
 	u32toa_count(static_cast<uint32_t>(value), buffer);
 }
 
-inline void u64toa_count(uint64_t value, char* buffer) {
+void u64toa_count(uint64_t value, char* buffer) {
 	unsigned digit = CountDecimalDigit64(value);
 	buffer += digit;
 	*buffer = '\0';
@@ -34,10 +33,12 @@ inline void u64toa_count(uint64_t value, char* buffer) {
 	} while (value > 0);
 }
 
-inline void i64toa_count(int64_t value, char* buffer) {
+void i64toa_count(int64_t value, char* buffer) {
 	if (value < 0) {
 		*buffer++ = '-';
 		value = -value;
 	}
 	u64toa_count(static_cast<uint64_t>(value), buffer);
 }
+
+REGISTER_TEST(count);

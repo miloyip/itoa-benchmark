@@ -1,10 +1,10 @@
-#pragma once
-
+#include <stdint.h>
 #include "digitslut.h"
+#include "test.h"
 
 // Use lookup table of two digits
 
-inline void u32toa_lut(uint32_t value, char* buffer) {
+void u32toa_lut(uint32_t value, char* buffer) {
 	char temp[10];
 	char* p = temp;
 	
@@ -30,7 +30,7 @@ inline void u32toa_lut(uint32_t value, char* buffer) {
 	*buffer = '\0';
 }
 
-inline void i32toa_lut(int32_t value, char* buffer) {
+void i32toa_lut(int32_t value, char* buffer) {
 	if (value < 0) {
 		*buffer++ = '-';
 		value = -value;
@@ -39,7 +39,7 @@ inline void i32toa_lut(int32_t value, char* buffer) {
 	u32toa_lut(static_cast<uint32_t>(value), buffer);
 }
 
-inline void u64toa_lut(uint64_t value, char* buffer) {
+void u64toa_lut(uint64_t value, char* buffer) {
 	char temp[20];
 	char* p = temp;
 	
@@ -65,7 +65,7 @@ inline void u64toa_lut(uint64_t value, char* buffer) {
 	*buffer = '\0';
 }
 
-inline void i64toa_lut(int64_t value, char* buffer) {
+void i64toa_lut(int64_t value, char* buffer) {
 	if (value < 0) {
 		*buffer++ = '-';
 		value = -value;
@@ -73,3 +73,5 @@ inline void i64toa_lut(int64_t value, char* buffer) {
 
 	u64toa_lut(static_cast<uint64_t>(value), buffer);
 }
+
+REGISTER_TEST(lut);

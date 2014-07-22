@@ -1,12 +1,11 @@
-#pragma once
-
 #include "countdecimaldigit.h"
 #include "digitslut.h"
+#include "test.h"
 
 // Additional count number of digit pass
 // Use lookup table of two gDigitsLut
 
-inline void u32toa_countlut(uint32_t value, char* buffer) {
+void u32toa_countlut(uint32_t value, char* buffer) {
 	unsigned digit = CountDecimalDigit32(value);
 	buffer += digit;
 	*buffer = '\0';
@@ -28,7 +27,7 @@ inline void u32toa_countlut(uint32_t value, char* buffer) {
 	}
 }
 
-inline void i32toa_countlut(int32_t value, char* buffer) {
+void i32toa_countlut(int32_t value, char* buffer) {
 	if (value < 0) {
 		*buffer++ = '-';
 		value = -value;
@@ -37,7 +36,7 @@ inline void i32toa_countlut(int32_t value, char* buffer) {
 	u32toa_countlut(static_cast<uint32_t>(value), buffer);
 }
 
-inline void u64toa_countlut(uint64_t value, char* buffer) {
+void u64toa_countlut(uint64_t value, char* buffer) {
 	unsigned digit = CountDecimalDigit64(value);
 	buffer += digit;
 	*buffer = '\0';
@@ -59,7 +58,7 @@ inline void u64toa_countlut(uint64_t value, char* buffer) {
 	}
 }
 
-inline void i64toa_countlut(int64_t value, char* buffer) {
+void i64toa_countlut(int64_t value, char* buffer) {
 	if (value < 0) {
 		*buffer++ = '-';
 		value = -value;
@@ -67,3 +66,5 @@ inline void i64toa_countlut(int64_t value, char* buffer) {
 	
 	u64toa_countlut(static_cast<uint64_t>(value), buffer);
 }
+
+REGISTER_TEST(countlut);
