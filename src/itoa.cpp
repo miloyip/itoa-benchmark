@@ -118,9 +118,10 @@ private:
 			for (size_t i = 0; i < kCountPerDigit; i++) {
 				*p++ = v * sign;
 				sign = Traits<T>::Negate(sign);
-				if (v++ == end)
+				if (++v == end)
 					v = start;
 			}
+			start = end;
 		}
 		std::random_shuffle(mData, mData + kCount);
 	}
@@ -151,7 +152,7 @@ void benchSequential(void(*f)(T, char*), const char* type, const char* fname, FI
 		for (unsigned iteration = 0; iteration < kIterationPerDigit; iteration++) {
 			f(v * sign, buffer);
 			sign = Traits<T>::Negate(sign);
-			if (v++ == end)
+			if (++v == end)
 				v = start;
 		}
 		timer.Stop();
