@@ -112,8 +112,8 @@ $(function() {
     implode(",", 
       array_map(
         function ($filename) {
-          return "\"" . basename($filename, ".html") . "\"";
-        }, glob("*.html")))
+          return "\"" . basename($filename, ".csv") . "\"";
+        }, glob("*.csv")))
     ?>];
 
   for (var i in configurations) {
