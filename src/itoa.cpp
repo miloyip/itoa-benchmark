@@ -17,8 +17,9 @@
 #include "vc.h"
 #include "sse2.h"
 
-const unsigned kIterationPerDigit = 1000000;
-const unsigned kIterationForRandom = 1000;
+const unsigned kIterationPerDigit = 100000;
+const unsigned kIterationForRandom = 100;
+const unsigned kTrial = 10;
 
 template <typename T>
 struct Traits {
@@ -138,30 +139,31 @@ void benchSequential(void(*f)(T, char*), const char* type, const char* fname, FI
 	printf("Benchmarking sequential %-20s ... ", fname);
 
 	char buffer[Traits<T>::kBufferSize];
-	double minDuration = 0.0;
+	double minDuration = std::numeric_limits<double>::max();
 	double maxDuration = 0.0;
 
 	T start = 1;
 	for (int digit = 1; digit <= Traits<T>::kMaxDigit; digit++) {
 		T end = (digit == Traits<T>::kMaxDigit) ? std::numeric_limits<T>::max() : start * 10;
 
-		T v = start;
-		T sign = 1;
-		Timer timer;
-		timer.Start();
-		for (unsigned iteration = 0; iteration < kIterationPerDigit; iteration++) {
-			f(v * sign, buffer);
-			sign = Traits<T>::Negate(sign);
-			if (++v == end)
-				v = start;
+		double duration = std::numeric_limits<double>::max();
+		for (unsigned trial = 0; trial < kTrial; trial++) {
+			T v = start;
+			T sign = 1;
+			Timer timer;
+			timer.Start();
+			for (unsigned iteration = 0; iteration < kIterationPerDigit; iteration++) {
+				f(v * sign, buffer);
+				sign = Traits<T>::Negate(sign);
+				if (++v == end)
+					v = start;
+			}
+			timer.Stop();
+			duration = std::min(duration, timer.GetElapsedMilliseconds());
 		}
-		timer.Stop();
-		//printf("Digit %d Time %fms\n", digit, timer.GetElapsedMilliseconds());
-		double duration = timer.GetElapsedMilliseconds();
-		if (minDuration > duration || digit == 1)
-			minDuration = duration;
-		if (maxDuration < duration)
-			maxDuration = duration;
+
+		minDuration = std::min(minDuration, duration);
+		maxDuration = std::max(maxDuration, duration);
 		fprintf(fp, "%s_sequential,%s,%d,%f\n", type, fname, digit, duration);
 		start = end;
 	}
@@ -177,15 +179,18 @@ void benchRandom(void(*f)(T, char*), const char* type, const char* fname, FILE* 
 	T* data = RandomData<T>::GetData();
 	size_t n = RandomData<T>::kCount;
 
-	Timer timer;
-	timer.Start();
+	double duration = std::numeric_limits<double>::max();
+	for (unsigned trial = 0; trial < kTrial; trial++) {
+		Timer timer;
+		timer.Start();
 
-	for (unsigned iteration = 0; iteration < kIterationForRandom; iteration++)
+		for (unsigned iteration = 0; iteration < kIterationForRandom; iteration++)
 		for (size_t i = 0; i < n; i++)
 			f(data[i], buffer);
-	
-	timer.Stop();
-	double duration = timer.GetElapsedMilliseconds();
+
+		timer.Stop();
+		duration = std::min(duration, timer.GetElapsedMilliseconds());
+	}
 	fprintf(fp, "%s_random,%s,0,%f\n", type, fname, duration);
 
 	printf("%8.3fms\n", duration);
