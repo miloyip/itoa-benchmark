@@ -266,8 +266,6 @@ void Bench() {
 }
 
 int main() {
-	char buffer[32];
-	u64toa_sse2(987654321, buffer);
 	Verify();
 	Bench();
 }

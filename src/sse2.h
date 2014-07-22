@@ -60,23 +60,7 @@ inline __m128i Convert8DigitsSSE2(uint32_t value) {
 	return v7;
 }
 
-inline __m128i ShiftDigits8_SSE2(__m128i a, int digit) {
-	assert(digit >= 8 && digit <= 16);
-	switch (digit) {
-		case  8: return _mm_srli_si128(a,  8);
-		case  9: return _mm_srli_si128(a,  9);
-		case 10: return _mm_srli_si128(a, 10);
-		case 11: return _mm_srli_si128(a, 11);
-		case 12: return _mm_srli_si128(a, 12);
-		case 13: return _mm_srli_si128(a, 13);
-		case 14: return _mm_srli_si128(a, 14);
-		case 15: return _mm_srli_si128(a, 15);
-		case 16: return _mm_srli_si128(a, 16);
-	}
-	return a; // should not execute here.
-}
-
-inline __m128i ShiftDigits16_SSE2(__m128i a, int digit) {
+inline __m128i ShiftDigits_SSE2(__m128i a, int digit) {
 	assert(digit >= 0 && digit <= 8);
 	switch (digit) {
 		case 0: return a;
@@ -110,7 +94,7 @@ inline void u32toa_sse2(uint32_t value, char* buffer) {
 		const __m128i a = Convert8DigitsSSE2(value);
 		
 		// Convert to bytes, add '0'
-		const __m128i va = _mm_add_epi8(_mm_packus_epi16(_mm_setzero_si128(), a), reinterpret_cast<const __m128i*>(kAsciiZero)[0]);
+		const __m128i va = _mm_add_epi8(_mm_packus_epi16(a, _mm_setzero_si128()), reinterpret_cast<const __m128i*>(kAsciiZero)[0]);
 
 		// Count number of digit
 		const unsigned mask = _mm_movemask_epi8(_mm_cmpeq_epi8(va, reinterpret_cast<const __m128i*>(kAsciiZero)[0]));
@@ -118,9 +102,10 @@ inline void u32toa_sse2(uint32_t value, char* buffer) {
 		_BitScanForward(&digit, ~mask | 0x8000);
 
 		// Shift digits to the beginning
-		__m128i result = ShiftDigits8_SSE2(va, digit);
+		__m128i result = ShiftDigits_SSE2(va, digit);
+		//__m128i result = _mm_srl_epi64(va, _mm_cvtsi32_si128(digit * 8));
 		_mm_storel_epi64(reinterpret_cast<__m128i*>(buffer), result);
-		buffer[16 - digit] = '\0';
+		buffer[8 - digit] = '\0';
     }
     else {
         // value = aabbbbbbbb in decimal
@@ -173,7 +158,7 @@ inline void u64toa_sse2(uint64_t value, char* buffer) {
 			const __m128i a = Convert8DigitsSSE2(v);
 		
 			// Convert to bytes, add '0'
-			const __m128i va = _mm_add_epi8(_mm_packus_epi16(_mm_setzero_si128(), a), reinterpret_cast<const __m128i*>(kAsciiZero)[0]);
+			const __m128i va = _mm_add_epi8(_mm_packus_epi16(a, _mm_setzero_si128()), reinterpret_cast<const __m128i*>(kAsciiZero)[0]);
 
 			// Count number of digit
 			const unsigned mask = _mm_movemask_epi8(_mm_cmpeq_epi8(va, reinterpret_cast<const __m128i*>(kAsciiZero)[0]));
@@ -181,9 +166,9 @@ inline void u64toa_sse2(uint64_t value, char* buffer) {
 			_BitScanForward(&digit, ~mask | 0x8000);
 
 			// Shift digits to the beginning
-			__m128i result = ShiftDigits8_SSE2(va, digit);
+			__m128i result = ShiftDigits_SSE2(va, digit);
 			_mm_storel_epi64(reinterpret_cast<__m128i*>(buffer), result);
-			buffer[16 - digit] = '\0';
+			buffer[8 - digit] = '\0';
         }
     }
     else if (value < 10000000000000000) {
@@ -202,7 +187,7 @@ inline void u64toa_sse2(uint64_t value, char* buffer) {
 		_BitScanForward(&digit, ~mask | 0x8000);
 
 		// Shift digits to the beginning
-		__m128i result = ShiftDigits16_SSE2(va, digit);
+		__m128i result = ShiftDigits_SSE2(va, digit);
 		_mm_storeu_si128(reinterpret_cast<__m128i*>(buffer), result);
 		buffer[16 - digit] = '\0';
 	}
