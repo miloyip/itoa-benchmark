@@ -22,29 +22,38 @@ $(function() {
     for (var i = 1; i < data.length; i++) {
     	var type = data[i][0];
    		var func = data[i][1];
+      var digit = data[i][2];
    		var time = data[i][3];
    		if (timeData[type] == null) {
    			timeData[type] = [["Function", "Time (ms)"/*, { role: "style" }*/]];
-   			funcRowMap = {};
+        if (digit != 0)
+   			  funcRowMap = {};
    		}
 
    		var table = timeData[type];
    		
-   		if (funcRowMap[func] == null)
-   			funcRowMap[func] = table.push([func, 0/*, defaultColors[table.length - 1]*/]) - 1;
-   		
-   		table[funcRowMap[func]][1] += time;
+      if (digit != 0) {
+     		if (funcRowMap[func] == null)
+     			funcRowMap[func] = table.push([func, 0/*, defaultColors[table.length - 1]*/]) - 1;
+     		
+     		table[funcRowMap[func]][1] += time;
+      }
+      else
+        table.push([func, time]);
     }
 
-    // Convert data for drawing line chart per digit
+    // Convert data for drawing line chart per sequential digit
     var timeDigitData = {}; // type -> table
     var funcColumnMap;
 
     for (var i = 1; i < data.length; i++) {
     	var type = data[i][0];
    		var func = data[i][1];
-		var digit = data[i][2];
+		  var digit = data[i][2];
    		var time = data[i][3];
+
+      if (digit == 0)
+        continue;
 
    		if (timeDigitData[type] == null) {
    			timeDigitData[type] = [["Digit"]];
@@ -74,7 +83,8 @@ $(function() {
 
 		drawTable(type, timeData[type]);
 		drawBarChart(type, timeData[type]);
-		drawDigitChart(type, timeDigitData[type]);
+    if (timeDigitData[type] != null)
+		  drawDigitChart(type, timeDigitData[type]);
 	}
 
 	$(".chart").each(function() {
@@ -173,7 +183,8 @@ function drawDigitChart(type, timeDigitData) {
 		vAxis: {
 			title: "Time (ms) in log scale",
 			logScale: true,
-			minorGridlines: { count: 10 }
+			minorGridlines: { count: 10 },
+      baseline: 0
 		},
 		width: 800,
 		height: 600
