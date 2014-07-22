@@ -181,19 +181,49 @@ void Verify() {
 
 #define BENCH(type, f) bench(type##_##f, STRINGIFY(type), STRINGIFY(f), fp)
 
+#ifndef MACHINE
+#define MACHINE "unknown"
+#endif
+
+#if defined(_WIN64)
+#	define OS "win64"
+#elif defined(_WIN32)
+#	define OS "win32"
+#endif
+
+#if defined(_MSC_VER)
+#	if _MSC_VER >= 1800
+#		define COMPILER "vc2013"
+#	elif _MSC_VER >= 1700
+#		define COMPILER "vc2012"
+#	elif _MSC_VER >= 1600
+#		define COMPILER "vc2010"
+#	elif _MSC_VER >= 1500
+#		define COMPILER "vc2008"
+#	elif _MSC_VER >= 1400
+#		define COMPILER "vc2005"
+#   else
+#		define COMPILER "vc"
+#	endif
+#else
+#	define COMPILER ""
+#endif
+
+#define RESULT_FILENAME MACHINE "_" OS "_" COMPILER ".csv"
+
 void Bench() {
 	// Try to write to /result path, where template.php exists
 	FILE *fp;
 	if ((fp = fopen("../../result/template.php", "r")) != NULL) {
 		fclose(fp);
-		fp = fopen("../../result/result.csv", "w");
+		fp = fopen("../../result/" RESULT_FILENAME, "w");
 	}
 	else if ((fp = fopen("../result/template.php", "r")) != NULL) {
 		fclose(fp);
-		fp = fopen("../result/result.csv", "w");
+		fp = fopen("../result/" RESULT_FILENAME, "w");
 	}
 	else
-		fp = fopen("result.csv", "w");
+		fp = fopen(RESULT_FILENAME, "w");
 
 	fprintf(fp, "Type,Function,Digit,Time(ms)\n");
 
