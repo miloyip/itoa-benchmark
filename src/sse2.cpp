@@ -72,8 +72,8 @@ inline __m128i Convert8DigitsSSE2(uint32_t value) {
 	return v7;
 }
 
-inline __m128i ShiftDigits_SSE2(__m128i a, int digit) {
-	assert(digit >= 0 && digit <= 8);
+inline __m128i ShiftDigits_SSE2(__m128i a, unsigned digit) {
+	assert(digit <= 8);
 	switch (digit) {
 		case 0: return a;
 		case 1: return _mm_srli_si128(a, 1);
@@ -257,11 +257,11 @@ inline void u64toa_sse2(uint64_t value, char* buffer) {
 
 		// Count number of digit
 		const unsigned mask = _mm_movemask_epi8(_mm_cmpeq_epi8(va, reinterpret_cast<const __m128i*>(kAsciiZero)[0]));
-		unsigned long digit;
 #ifdef _MSC_VER
+		unsigned long digit;
 		_BitScanForward(&digit, ~mask | 0x8000);
 #else
-		digit = __builtin_ctz(~mask | 0x8000);
+		unsigned digit = __builtin_ctz(~mask | 0x8000);
 #endif
 
 		// Shift digits to the beginning
