@@ -113,5 +113,6 @@ null       | Do nothing.
 
 ## Related Benchmarks and Discussions
 
+* [The String Formatters of Manor Farm] (http://www.gotw.ca/publications/mill19.htm) by Herb Sutter, 2009.
 * [C++ itoa benchmark](https://github.com/localvoid/cxx-benchmark-itoa) by [localvoid](https://github.com/localvoid)
 * [Stackoverflow: C++ performance challenge: integer to std::string conversion](http://stackoverflow.com/questions/4351371/c-performance-challenge-integer-to-stdstring-conversion)
