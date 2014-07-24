@@ -12,7 +12,24 @@
 #	define OS "cygwin64"
 #elif defined(__CYGWIN__)
 #	define OS "cygwin32"
-#else
+#elif defined(__APPLE__)
+#	include "TargetConditionals.h"
+#	if TARGET_OS_IPHONE
+#     	ifdef __LP64__
+#			define OS "ios64"
+#		else
+#			define OS "ios32"
+#		endif
+#	elif TARGET_OS_MAC
+#       ifdef __amd64__
+#	    	define OS "mac64"
+#		else
+#			define OS "mac32"
+#		endif
+#   endif
+#endif
+
+#ifndef OS
 #define OS "unknown"
 #endif
 
