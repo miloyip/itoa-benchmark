@@ -1,0 +1,851 @@
+<html>
+<head>
+<script src="http://code.jquery.com/jquery-1.8.2.js"></script>
+<script src="http://www.google.com/jsapi?autoload={'modules':[{'name':'visualization','version':'1','packages':['controls', 'charteditor']}]}"></script>
+<script src="http://jquery-csv.googlecode.com/git/src/jquery.csv.js"></script>
+<link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+<link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap-theme.min.css">
+<script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+<script>
+$(function() {
+	google.load("visualization", "1", {packages:["corechart"]});
+
+    var csv = $('#textInput').val();
+    var data = $.csv.toArrays(csv, {
+        onParseValue: $.csv.hooks.castToScalar
+    });
+
+    // Convert data for bar chart (summing all digits)
+    var timeData = {};	// type -> table
+    var funcRowMap;
+
+    for (var i = 1; i < data.length; i++) {
+    	var type = data[i][0];
+   		var func = data[i][1];
+      var digit = data[i][2];
+   		var time = data[i][3];
+   		if (timeData[type] == null) {
+   			timeData[type] = [["Function", "Time (ms)"/*, { role: "style" }*/]];
+        if (digit != 0)
+   			  funcRowMap = {};
+   		}
+
+   		var table = timeData[type];
+   		
+      if (digit != 0) {
+     		if (funcRowMap[func] == null)
+     			funcRowMap[func] = table.push([func, 0/*, defaultColors[table.length - 1]*/]) - 1;
+     		
+     		table[funcRowMap[func]][1] += time;
+      }
+      else
+        table.push([func, time]);
+    }
+
+    // Convert data for drawing line chart per sequential digit
+    var timeDigitData = {}; // type -> table
+    var funcColumnMap;
+
+    for (var i = 1; i < data.length; i++) {
+    	var type = data[i][0];
+   		var func = data[i][1];
+		  var digit = data[i][2];
+   		var time = data[i][3];
+
+      if (digit == 0)
+        continue;
+
+   		if (timeDigitData[type] == null) {
+   			timeDigitData[type] = [["Digit"]];
+   			funcColumnMap = {};
+   		}
+
+   		var table = timeDigitData[type];
+
+   		if (funcColumnMap[func] == null)
+   			funcColumnMap[func] = table[0].push(func) - 1;
+
+   		var row;
+   		for (row = 1; row < table.length; row++)
+   			if (table[row][0] == digit)
+   				break;
+
+    	if (row == table.length)
+    		table.push([digit]);
+
+		table[row][funcColumnMap[func]] = time;
+	}
+
+	for (var type in timeData) {
+		$("#main").append(
+      $("<a>", {name: type}),
+      $("<h2>", {style: "padding-top: 70px; margin-top: -70px;"}).append(type)
+    );
+
+    $("#section").append($("<li>").append($("<a>", {href: "#" + type}).append(type)));
+
+		drawTable(type, timeData[type]);
+		drawBarChart(type, timeData[type]);
+    if (timeDigitData[type] != null)
+		  drawDigitChart(type, timeDigitData[type]);
+	}
+
+	$(".chart").each(function() {
+		var chart = $(this);
+		var d = $("#downloadDD").clone().css("display", "");
+		$('li a', d).each(function() {
+	        $(this).click(function() {
+	            var svg = chart[0].getElementsByTagName('svg')[0].parentNode.innerHTML;
+	            svg=sanitize(svg);
+	            $('#imageFilename').val($("#title").html() + "_" + chart.data("filename"));
+	            $('#imageGetFormTYPE').val($(this).attr('dltype'));
+	            $('#imageGetFormSVG').val(svg);
+	            $('#imageGetForm').submit();
+	        });
+	    });		
+		$(this).after(d);
+	});
+
+  // Add configurations
+  var thisConfig = "corei53330S@2.7_mac64_clang5.1";
+  var configurations = ["corei53330S@2.7_mac64_clang5.1","corei7920@2.67_cygwin32_gcc4.8","corei7920@2.67_cygwin64_gcc4.8","corei7920@2.67_win32_vc2013","corei7920@2.67_win64_vc2013"];
+
+  for (var i in configurations) {
+    var c = configurations[i];
+    $("#configuration").append($("<li>", {class : (c == thisConfig ? "active" : "")}).append($("<a>", {href: c + ".html"}).append(c)));
+  }
+});
+
+function drawTable(type, timeData) {
+	var data = google.visualization.arrayToDataTable(timeData);
+    data.addColumn('number', 'Speedup');
+    data.sort([{ column: 1, desc: true }]);
+    var formatter1 = new google.visualization.NumberFormat({ fractionDigits: 3 });
+    formatter1.format(data, 1);
+
+	var div = document.createElement("div");
+	div.className = "tablechart";
+	$("#main").append(div);
+    var table = new google.visualization.Table(div);
+    redrawTable(0);
+    table.setSelection([{ row: 0, column: null}]);
+
+    function redrawTable(selectedRow) {
+        // Compute relative time using the first row as basis
+        var basis = data.getValue(selectedRow, 1);
+        for (var rowIndex = 0; rowIndex < data.getNumberOfRows(); rowIndex++)
+            data.setValue(rowIndex, 2, basis / data.getValue(rowIndex, 1));
+
+        var formatter = new google.visualization.NumberFormat({suffix: 'x'});
+        formatter.format(data, 2); // Apply formatter to second column
+
+        table.draw(data);
+    }
+
+    google.visualization.events.addListener(table, 'select',
+    function() {
+        var selection = table.getSelection();
+        if (selection.length > 0) {
+            var item = selection[0];
+            if (item.row != null)
+                redrawTable(item.row);
+        }
+    });
+
+}
+
+function drawBarChart(type, timeData) {
+    var defaultColors = ["#3366cc","#dc3912","#ff9900","#109618","#990099","#0099c6","#dd4477","#66aa00","#b82e2e","#316395","#994499","#22aa99","#aaaa11","#6633cc","#e67300","#8b0707","#651067","#329262","#5574a6","#3b3eac","#b77322","#16d620","#b91383","#f4359e","#9c5935","#a9c413","#2a778d","#668d1c","#bea413","#0c5922","#743411"];
+
+	var data = google.visualization.arrayToDataTable(timeData);
+	data.addColumn({ type: "string", role: "style" })
+	for (var rowIndex = 0; rowIndex < data.getNumberOfRows(); rowIndex++)
+		data.setValue(rowIndex, 2, defaultColors[rowIndex]);
+
+    data.sort([{ column: 1, desc: true }]);
+	var options = { 
+		title: type,
+		chartArea: {'width': '70%', 'height': '70%'},
+		width: 800,
+		height: 300,
+		legend: { position: "none" },
+		hAxis: { title: "Time (ms)" }
+	};
+	var div = document.createElement("div");
+	div.className = "chart";
+	$(div).data("filename", type + "_time");
+	$("#main").append(div);
+	var chart = new google.visualization.BarChart(div);
+
+	chart.draw(data, options);
+}
+
+function drawDigitChart(type, timeDigitData) {
+	var data = google.visualization.arrayToDataTable(timeDigitData);
+
+	var options = { 
+		title: type,
+		chartArea: {'width': '70%', 'height': '80%'},
+		hAxis: {
+			title: "Digit",
+			gridlines: { count: timeDigitData.length - 1 },
+			maxAlternation: 1,
+			minTextSpacing: 0
+		},
+		vAxis: {
+			title: "Time (ms) in log scale",
+			logScale: true,
+			minorGridlines: { count: 10 },
+      baseline: 0
+		},
+		width: 800,
+		height: 600
+	};
+	var div = document.createElement("div");
+	div.className = "chart";
+	$(div).data("filename", type + "_timedigit");
+	$("#main").append(div);
+	var chart = new google.visualization.LineChart(div);
+
+	chart.draw(data, options);
+}
+
+// http://jsfiddle.net/P6XXM/
+function sanitize(svg) {
+    svg = svg
+        .replace(/\<svg/,'<svg xmlns="http://www.w3.org/2000/svg" version="1.1"')
+        .replace(/zIndex="[^"]+"/g, '')
+        .replace(/isShadow="[^"]+"/g, '')
+        .replace(/symbolName="[^"]+"/g, '')
+        .replace(/jQuery[0-9]+="[^"]+"/g, '')
+        .replace(/isTracker="[^"]+"/g, '')
+        .replace(/url\([^#]+#/g, 'url(#')
+        .replace('<svg xmlns:xlink="http://www.w3.org/1999/xlink" ', '<svg ')
+        .replace(/ href=/g, ' xlink:href=')
+    /*.replace(/preserveAspectRatio="none">/g, 'preserveAspectRatio="none"/>')*/
+    /* This fails in IE < 8
+    .replace(/([0-9]+)\.([0-9]+)/g, function(s1, s2, s3) { // round off to save weight
+    return s2 +'.'+ s3[0];
+    })*/
+
+    // IE specific
+        .replace(/id=([^" >]+)/g, 'id="$1"')
+        .replace(/class=([^" ]+)/g, 'class="$1"')
+        .replace(/ transform /g, ' ')
+        .replace(/:(path|rect)/g, '$1')
+        .replace(/<img ([^>]*)>/gi, '<image $1 />')
+        .replace(/<\/image>/g, '') // remove closing tags for images as they'll never have any content
+        .replace(/<image ([^>]*)([^\/])>/gi, '<image $1$2 />') // closes image tags for firefox
+        .replace(/width=(\d+)/g, 'width="$1"')
+        .replace(/height=(\d+)/g, 'height="$1"')
+        .replace(/hc-svg-href="/g, 'xlink:href="')
+        .replace(/style="([^"]+)"/g, function (s) {
+            return s.toLowerCase();
+        });
+
+    // IE9 beta bugs with innerHTML. Test again with final IE9.
+    svg = svg.replace(/(url\(#highcharts-[0-9]+)&quot;/g, '$1')
+        .replace(/&quot;/g, "'");
+    if (svg.match(/ xmlns="/g).length == 2) {
+        svg = svg.replace(/xmlns="[^"]+"/, '');
+    }
+
+    return svg;
+}
+</script>
+<style type="text/css">
+@media (min-width: 800px) {
+  .container {
+    max-width: 800px;
+  }
+}
+textarea {
+	font-family: Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+}
+.tablechart {
+	width: 700px;
+	margin: auto;
+	padding-top: 20px;
+	padding-bottom: 20px;
+}
+.chart {
+	padding-top: 20px;
+	padding-bottom: 20px;
+}
+body { padding-top: 70px; }
+</style>
+</head>
+<body>
+<div class="container">
+<nav class="navbar navbar-default navbar-fixed-top" role="navigation">
+  <div class="container">
+    <!-- Brand and toggle get grouped for better mobile display -->
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="https://github.com/miloyip/itoa-benchmark"><span class="glyphicon glyphicon-home"></span> itoa-benchmark</a>
+    </div>
+
+    <!-- Collect the nav links, forms, and other content for toggling -->
+    <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+      <ul class="nav navbar-nav">
+        <li class="dropdown">
+          <a href="#" class="dropdown-toggle" data-toggle="dropdown">Configuration <span class="caret"></span></a>
+          <ul class="dropdown-menu" role="menu" id="configuration">
+          </ul>
+        </li>
+        <li class="dropdown">
+          <a href="#" class="dropdown-toggle" data-toggle="dropdown">Section <span class="caret"></span></a>
+          <ul class="dropdown-menu" role="menu" id="section">
+          </ul>
+        </li>
+      </ul>
+      <p class="navbar-text navbar-right">Developed by <a href="https://github.com/miloyip" class="navbar-link">Milo Yip</a></p>
+    </div><!-- /.navbar-collapse -->
+  </div><!-- /.container-fluid -->
+</nav>
+<div class="page-header">
+<h1 id="title">corei53330S@2.7_mac64_clang5.1</h1>
+</div>
+<div id="main"></div>
+<h2>Source CSV</h2>
+<textarea id="textInput" class="form-control" rows="5" readonly>
+Type,Function,Digit,Time(ms)
+u32toa_sequential,branchlut,1,0.587000
+u32toa_sequential,branchlut,2,0.486000
+u32toa_sequential,branchlut,3,0.470000
+u32toa_sequential,branchlut,4,0.578000
+u32toa_sequential,branchlut,5,0.810000
+u32toa_sequential,branchlut,6,0.870000
+u32toa_sequential,branchlut,7,0.916000
+u32toa_sequential,branchlut,8,0.920000
+u32toa_sequential,branchlut,9,1.052000
+u32toa_sequential,branchlut,10,1.090000
+u32toa_random,branchlut,0,13.697000
+u32toa_sequential,null,1,0.242000
+u32toa_sequential,null,2,0.226000
+u32toa_sequential,null,3,0.226000
+u32toa_sequential,null,4,0.226000
+u32toa_sequential,null,5,0.242000
+u32toa_sequential,null,6,0.226000
+u32toa_sequential,null,7,0.226000
+u32toa_sequential,null,8,0.226000
+u32toa_sequential,null,9,0.226000
+u32toa_sequential,null,10,0.226000
+u32toa_random,null,0,2.263000
+u32toa_sequential,sse2,1,0.587000
+u32toa_sequential,sse2,2,0.553000
+u32toa_sequential,sse2,3,0.518000
+u32toa_sequential,sse2,4,0.537000
+u32toa_sequential,sse2,5,0.809000
+u32toa_sequential,sse2,6,0.774000
+u32toa_sequential,sse2,7,0.839000
+u32toa_sequential,sse2,8,0.888000
+u32toa_sequential,sse2,9,0.651000
+u32toa_sequential,sse2,10,0.728000
+u32toa_random,sse2,0,12.882000
+u32toa_sequential,sprintf,1,9.852000
+u32toa_sequential,sprintf,2,10.521000
+u32toa_sequential,sprintf,3,11.072000
+u32toa_sequential,sprintf,4,10.990000
+u32toa_sequential,sprintf,5,11.185000
+u32toa_sequential,sprintf,6,11.415000
+u32toa_sequential,sprintf,7,11.687000
+u32toa_sequential,sprintf,8,11.396000
+u32toa_sequential,sprintf,9,11.395000
+u32toa_sequential,sprintf,10,11.717000
+u32toa_random,sprintf,0,122.049000
+u32toa_sequential,lut,1,0.449000
+u32toa_sequential,lut,2,0.549000
+u32toa_sequential,lut,3,0.723000
+u32toa_sequential,lut,4,0.892000
+u32toa_sequential,lut,5,1.078000
+u32toa_sequential,lut,6,1.279000
+u32toa_sequential,lut,7,1.478000
+u32toa_sequential,lut,8,1.620000
+u32toa_sequential,lut,9,1.826000
+u32toa_sequential,lut,10,1.952000
+u32toa_random,lut,0,18.827000
+u32toa_sequential,count,1,0.620000
+u32toa_sequential,count,2,0.765000
+u32toa_sequential,count,3,0.951000
+u32toa_sequential,count,4,1.086000
+u32toa_sequential,count,5,1.171000
+u32toa_sequential,count,6,1.370000
+u32toa_sequential,count,7,1.478000
+u32toa_sequential,count,8,1.645000
+u32toa_sequential,count,9,1.799000
+u32toa_sequential,count,10,1.951000
+u32toa_random,count,0,19.265000
+u32toa_sequential,naive,1,0.389000
+u32toa_sequential,naive,2,0.595000
+u32toa_sequential,naive,3,0.835000
+u32toa_sequential,naive,4,1.018000
+u32toa_sequential,naive,5,1.235000
+u32toa_sequential,naive,6,1.479000
+u32toa_sequential,naive,7,1.678000
+u32toa_sequential,naive,8,1.902000
+u32toa_sequential,naive,9,2.130000
+u32toa_sequential,naive,10,2.369000
+u32toa_random,naive,0,20.035000
+u32toa_sequential,countlut,1,0.513000
+u32toa_sequential,countlut,2,0.567000
+u32toa_sequential,countlut,3,0.713000
+u32toa_sequential,countlut,4,0.770000
+u32toa_sequential,countlut,5,0.883000
+u32toa_sequential,countlut,6,0.913000
+u32toa_sequential,countlut,7,1.107000
+u32toa_sequential,countlut,8,1.210000
+u32toa_sequential,countlut,9,1.376000
+u32toa_sequential,countlut,10,1.425000
+u32toa_random,countlut,0,14.896000
+i32toa_sequential,branchlut,1,0.646000
+i32toa_sequential,branchlut,2,0.582000
+i32toa_sequential,branchlut,3,0.575000
+i32toa_sequential,branchlut,4,0.631000
+i32toa_sequential,branchlut,5,0.832000
+i32toa_sequential,branchlut,6,0.907000
+i32toa_sequential,branchlut,7,0.968000
+i32toa_sequential,branchlut,8,1.058000
+i32toa_sequential,branchlut,9,1.161000
+i32toa_sequential,branchlut,10,1.221000
+i32toa_random,branchlut,0,17.218000
+i32toa_sequential,null,1,0.226000
+i32toa_sequential,null,2,0.242000
+i32toa_sequential,null,3,0.226000
+i32toa_sequential,null,4,0.226000
+i32toa_sequential,null,5,0.226000
+i32toa_sequential,null,6,0.226000
+i32toa_sequential,null,7,0.242000
+i32toa_sequential,null,8,0.226000
+i32toa_sequential,null,9,0.226000
+i32toa_sequential,null,10,0.226000
+i32toa_random,null,0,2.264000
+i32toa_sequential,sse2,1,0.725000
+i32toa_sequential,sse2,2,0.667000
+i32toa_sequential,sse2,3,0.614000
+i32toa_sequential,sse2,4,0.623000
+i32toa_sequential,sse2,5,0.938000
+i32toa_sequential,sse2,6,0.897000
+i32toa_sequential,sse2,7,0.959000
+i32toa_sequential,sse2,8,1.024000
+i32toa_sequential,sse2,9,0.743000
+i32toa_sequential,sse2,10,0.805000
+i32toa_random,sse2,0,16.683000
+i32toa_sequential,sprintf,1,10.759000
+i32toa_sequential,sprintf,2,11.075000
+i32toa_sequential,sprintf,3,11.373000
+i32toa_sequential,sprintf,4,11.654000
+i32toa_sequential,sprintf,5,11.973000
+i32toa_sequential,sprintf,6,12.224000
+i32toa_sequential,sprintf,7,12.486000
+i32toa_sequential,sprintf,8,11.876000
+i32toa_sequential,sprintf,9,12.287000
+i32toa_sequential,sprintf,10,12.550000
+i32toa_random,sprintf,0,133.509000
+i32toa_sequential,lut,1,0.567000
+i32toa_sequential,lut,2,0.679000
+i32toa_sequential,lut,3,0.864000
+i32toa_sequential,lut,4,1.034000
+i32toa_sequential,lut,5,1.199000
+i32toa_sequential,lut,6,1.369000
+i32toa_sequential,lut,7,1.585000
+i32toa_sequential,lut,8,1.727000
+i32toa_sequential,lut,9,1.954000
+i32toa_sequential,lut,10,2.050000
+i32toa_random,lut,0,22.564000
+i32toa_sequential,count,1,0.765000
+i32toa_sequential,count,2,0.900000
+i32toa_sequential,count,3,1.018000
+i32toa_sequential,count,4,1.172000
+i32toa_sequential,count,5,1.292000
+i32toa_sequential,count,6,1.427000
+i32toa_sequential,count,7,1.606000
+i32toa_sequential,count,8,1.757000
+i32toa_sequential,count,9,1.874000
+i32toa_sequential,count,10,2.048000
+i32toa_random,count,0,21.914000
+i32toa_sequential,naive,1,0.463000
+i32toa_sequential,naive,2,0.647000
+i32toa_sequential,naive,3,0.893000
+i32toa_sequential,naive,4,1.095000
+i32toa_sequential,naive,5,1.350000
+i32toa_sequential,naive,6,1.574000
+i32toa_sequential,naive,7,1.764000
+i32toa_sequential,naive,8,2.000000
+i32toa_sequential,naive,9,2.242000
+i32toa_sequential,naive,10,2.456000
+i32toa_random,naive,0,22.704000
+i32toa_sequential,countlut,1,0.620000
+i32toa_sequential,countlut,2,0.670000
+i32toa_sequential,countlut,3,0.798000
+i32toa_sequential,countlut,4,0.895000
+i32toa_sequential,countlut,5,0.939000
+i32toa_sequential,countlut,6,1.032000
+i32toa_sequential,countlut,7,1.253000
+i32toa_sequential,countlut,8,1.358000
+i32toa_sequential,countlut,9,1.474000
+i32toa_sequential,countlut,10,1.584000
+i32toa_random,countlut,0,18.748000
+u64toa_sequential,branchlut,1,0.628000
+u64toa_sequential,branchlut,2,0.582000
+u64toa_sequential,branchlut,3,0.566000
+u64toa_sequential,branchlut,4,0.616000
+u64toa_sequential,branchlut,5,0.806000
+u64toa_sequential,branchlut,6,0.874000
+u64toa_sequential,branchlut,7,0.938000
+u64toa_sequential,branchlut,8,0.988000
+u64toa_sequential,branchlut,9,1.545000
+u64toa_sequential,branchlut,10,1.629000
+u64toa_sequential,branchlut,11,1.700000
+u64toa_sequential,branchlut,12,1.730000
+u64toa_sequential,branchlut,13,1.786000
+u64toa_sequential,branchlut,14,1.818000
+u64toa_sequential,branchlut,15,1.892000
+u64toa_sequential,branchlut,16,1.908000
+u64toa_sequential,branchlut,17,2.137000
+u64toa_sequential,branchlut,18,2.163000
+u64toa_sequential,branchlut,19,2.216000
+u64toa_sequential,branchlut,20,2.222000
+u64toa_random,branchlut,0,46.243000
+u64toa_sequential,null,1,0.242000
+u64toa_sequential,null,2,0.226000
+u64toa_sequential,null,3,0.226000
+u64toa_sequential,null,4,0.226000
+u64toa_sequential,null,5,0.226000
+u64toa_sequential,null,6,0.226000
+u64toa_sequential,null,7,0.226000
+u64toa_sequential,null,8,0.226000
+u64toa_sequential,null,9,0.226000
+u64toa_sequential,null,10,0.226000
+u64toa_sequential,null,11,0.226000
+u64toa_sequential,null,12,0.226000
+u64toa_sequential,null,13,0.226000
+u64toa_sequential,null,14,0.226000
+u64toa_sequential,null,15,0.226000
+u64toa_sequential,null,16,0.226000
+u64toa_sequential,null,17,0.226000
+u64toa_sequential,null,18,0.226000
+u64toa_sequential,null,19,0.226000
+u64toa_sequential,null,20,0.226000
+u64toa_random,null,0,4.528000
+u64toa_sequential,sse2,1,0.582000
+u64toa_sequential,sse2,2,0.517000
+u64toa_sequential,sse2,3,0.485000
+u64toa_sequential,sse2,4,0.529000
+u64toa_sequential,sse2,5,0.743000
+u64toa_sequential,sse2,6,0.779000
+u64toa_sequential,sse2,7,0.839000
+u64toa_sequential,sse2,8,0.890000
+u64toa_sequential,sse2,9,1.227000
+u64toa_sequential,sse2,10,1.225000
+u64toa_sequential,sse2,11,1.225000
+u64toa_sequential,sse2,12,1.228000
+u64toa_sequential,sse2,13,1.225000
+u64toa_sequential,sse2,14,1.225000
+u64toa_sequential,sse2,15,1.228000
+u64toa_sequential,sse2,16,1.123000
+u64toa_sequential,sse2,17,1.040000
+u64toa_sequential,sse2,18,1.110000
+u64toa_sequential,sse2,19,1.232000
+u64toa_sequential,sse2,20,1.329000
+u64toa_random,sse2,0,46.648000
+u64toa_sequential,sprintf,1,10.923000
+u64toa_sequential,sprintf,2,11.107000
+u64toa_sequential,sprintf,3,11.685000
+u64toa_sequential,sprintf,4,11.732000
+u64toa_sequential,sprintf,5,12.083000
+u64toa_sequential,sprintf,6,12.301000
+u64toa_sequential,sprintf,7,12.545000
+u64toa_sequential,sprintf,8,12.290000
+u64toa_sequential,sprintf,9,12.387000
+u64toa_sequential,sprintf,10,12.682000
+u64toa_sequential,sprintf,11,12.981000
+u64toa_sequential,sprintf,12,13.269000
+u64toa_sequential,sprintf,13,13.714000
+u64toa_sequential,sprintf,14,14.066000
+u64toa_sequential,sprintf,15,14.515000
+u64toa_sequential,sprintf,16,14.202000
+u64toa_sequential,sprintf,17,14.455000
+u64toa_sequential,sprintf,18,14.959000
+u64toa_sequential,sprintf,19,15.233000
+u64toa_sequential,sprintf,20,15.716000
+u64toa_random,sprintf,0,291.979000
+u64toa_sequential,lut,1,0.438000
+u64toa_sequential,lut,2,0.550000
+u64toa_sequential,lut,3,0.783000
+u64toa_sequential,lut,4,0.946000
+u64toa_sequential,lut,5,1.190000
+u64toa_sequential,lut,6,1.376000
+u64toa_sequential,lut,7,1.608000
+u64toa_sequential,lut,8,1.765000
+u64toa_sequential,lut,9,1.993000
+u64toa_sequential,lut,10,2.121000
+u64toa_sequential,lut,11,2.359000
+u64toa_sequential,lut,12,2.475000
+u64toa_sequential,lut,13,2.687000
+u64toa_sequential,lut,14,2.837000
+u64toa_sequential,lut,15,3.054000
+u64toa_sequential,lut,16,3.149000
+u64toa_sequential,lut,17,3.393000
+u64toa_sequential,lut,18,3.522000
+u64toa_sequential,lut,19,3.769000
+u64toa_sequential,lut,20,3.852000
+u64toa_random,lut,0,64.521000
+u64toa_sequential,count,1,0.606000
+u64toa_sequential,count,2,0.835000
+u64toa_sequential,count,3,0.992000
+u64toa_sequential,count,4,1.201000
+u64toa_sequential,count,5,1.377000
+u64toa_sequential,count,6,1.630000
+u64toa_sequential,count,7,1.799000
+u64toa_sequential,count,8,1.998000
+u64toa_sequential,count,9,2.213000
+u64toa_sequential,count,10,2.451000
+u64toa_sequential,count,11,2.651000
+u64toa_sequential,count,12,2.884000
+u64toa_sequential,count,13,3.146000
+u64toa_sequential,count,14,3.343000
+u64toa_sequential,count,15,3.607000
+u64toa_sequential,count,16,3.843000
+u64toa_sequential,count,17,4.030000
+u64toa_sequential,count,18,4.294000
+u64toa_sequential,count,19,4.612000
+u64toa_sequential,count,20,4.783000
+u64toa_random,count,0,70.862000
+u64toa_sequential,naive,1,0.450000
+u64toa_sequential,naive,2,0.674000
+u64toa_sequential,naive,3,0.927000
+u64toa_sequential,naive,4,1.172000
+u64toa_sequential,naive,5,1.477000
+u64toa_sequential,naive,6,1.766000
+u64toa_sequential,naive,7,2.007000
+u64toa_sequential,naive,8,2.243000
+u64toa_sequential,naive,9,2.627000
+u64toa_sequential,naive,10,2.828000
+u64toa_sequential,naive,11,3.005000
+u64toa_sequential,naive,12,3.472000
+u64toa_sequential,naive,13,3.659000
+u64toa_sequential,naive,14,3.788000
+u64toa_sequential,naive,15,4.396000
+u64toa_sequential,naive,16,4.514000
+u64toa_sequential,naive,17,4.585000
+u64toa_sequential,naive,18,5.309000
+u64toa_sequential,naive,19,5.354000
+u64toa_sequential,naive,20,5.358000
+u64toa_random,naive,0,80.583000
+u64toa_sequential,countlut,1,0.453000
+u64toa_sequential,countlut,2,0.489000
+u64toa_sequential,countlut,3,0.695000
+u64toa_sequential,countlut,4,0.750000
+u64toa_sequential,countlut,5,0.965000
+u64toa_sequential,countlut,6,1.009000
+u64toa_sequential,countlut,7,1.248000
+u64toa_sequential,countlut,8,1.317000
+u64toa_sequential,countlut,9,1.478000
+u64toa_sequential,countlut,10,1.526000
+u64toa_sequential,countlut,11,1.687000
+u64toa_sequential,countlut,12,1.750000
+u64toa_sequential,countlut,13,1.915000
+u64toa_sequential,countlut,14,1.972000
+u64toa_sequential,countlut,15,2.149000
+u64toa_sequential,countlut,16,2.213000
+u64toa_sequential,countlut,17,2.385000
+u64toa_sequential,countlut,18,2.450000
+u64toa_sequential,countlut,19,2.665000
+u64toa_sequential,countlut,20,2.730000
+u64toa_random,countlut,0,46.161000
+i64toa_sequential,branchlut,1,0.727000
+i64toa_sequential,branchlut,2,0.695000
+i64toa_sequential,branchlut,3,0.663000
+i64toa_sequential,branchlut,4,0.711000
+i64toa_sequential,branchlut,5,0.931000
+i64toa_sequential,branchlut,6,0.996000
+i64toa_sequential,branchlut,7,1.045000
+i64toa_sequential,branchlut,8,1.085000
+i64toa_sequential,branchlut,9,1.648000
+i64toa_sequential,branchlut,10,1.695000
+i64toa_sequential,branchlut,11,1.772000
+i64toa_sequential,branchlut,12,1.823000
+i64toa_sequential,branchlut,13,1.867000
+i64toa_sequential,branchlut,14,1.895000
+i64toa_sequential,branchlut,15,1.944000
+i64toa_sequential,branchlut,16,1.959000
+i64toa_sequential,branchlut,17,2.242000
+i64toa_sequential,branchlut,18,2.288000
+i64toa_sequential,branchlut,19,2.349000
+i64toa_sequential,branchlut,20,2.350000
+i64toa_random,branchlut,0,53.746000
+i64toa_sequential,null,1,0.258000
+i64toa_sequential,null,2,0.276000
+i64toa_sequential,null,3,0.276000
+i64toa_sequential,null,4,0.258000
+i64toa_sequential,null,5,0.258000
+i64toa_sequential,null,6,0.258000
+i64toa_sequential,null,7,0.272000
+i64toa_sequential,null,8,0.258000
+i64toa_sequential,null,9,0.276000
+i64toa_sequential,null,10,0.258000
+i64toa_sequential,null,11,0.258000
+i64toa_sequential,null,12,0.258000
+i64toa_sequential,null,13,0.258000
+i64toa_sequential,null,14,0.258000
+i64toa_sequential,null,15,0.258000
+i64toa_sequential,null,16,0.258000
+i64toa_sequential,null,17,0.258000
+i64toa_sequential,null,18,0.258000
+i64toa_sequential,null,19,0.258000
+i64toa_sequential,null,20,0.266000
+i64toa_random,null,0,5.174000
+i64toa_sequential,sse2,1,0.695000
+i64toa_sequential,sse2,2,0.630000
+i64toa_sequential,sse2,3,0.639000
+i64toa_sequential,sse2,4,0.630000
+i64toa_sequential,sse2,5,0.887000
+i64toa_sequential,sse2,6,0.900000
+i64toa_sequential,sse2,7,0.960000
+i64toa_sequential,sse2,8,1.027000
+i64toa_sequential,sse2,9,1.325000
+i64toa_sequential,sse2,10,1.328000
+i64toa_sequential,sse2,11,1.330000
+i64toa_sequential,sse2,12,1.330000
+i64toa_sequential,sse2,13,1.330000
+i64toa_sequential,sse2,14,1.330000
+i64toa_sequential,sse2,15,1.330000
+i64toa_sequential,sse2,16,1.226000
+i64toa_sequential,sse2,17,1.200000
+i64toa_sequential,sse2,18,1.275000
+i64toa_sequential,sse2,19,1.381000
+i64toa_sequential,sse2,20,1.381000
+i64toa_random,sse2,0,52.763000
+i64toa_sequential,sprintf,1,11.427000
+i64toa_sequential,sprintf,2,11.739000
+i64toa_sequential,sprintf,3,11.923000
+i64toa_sequential,sprintf,4,12.208000
+i64toa_sequential,sprintf,5,12.461000
+i64toa_sequential,sprintf,6,12.695000
+i64toa_sequential,sprintf,7,13.009000
+i64toa_sequential,sprintf,8,12.696000
+i64toa_sequential,sprintf,9,12.850000
+i64toa_sequential,sprintf,10,13.138000
+i64toa_sequential,sprintf,11,13.466000
+i64toa_sequential,sprintf,12,13.877000
+i64toa_sequential,sprintf,13,14.260000
+i64toa_sequential,sprintf,14,14.616000
+i64toa_sequential,sprintf,15,15.072000
+i64toa_sequential,sprintf,16,14.746000
+i64toa_sequential,sprintf,17,14.952000
+i64toa_sequential,sprintf,18,15.352000
+i64toa_sequential,sprintf,19,15.756000
+i64toa_sequential,sprintf,20,15.831000
+i64toa_random,sprintf,0,309.915000
+i64toa_sequential,lut,1,0.517000
+i64toa_sequential,lut,2,0.646000
+i64toa_sequential,lut,3,0.886000
+i64toa_sequential,lut,4,1.075000
+i64toa_sequential,lut,5,1.315000
+i64toa_sequential,lut,6,1.496000
+i64toa_sequential,lut,7,1.734000
+i64toa_sequential,lut,8,1.900000
+i64toa_sequential,lut,9,2.146000
+i64toa_sequential,lut,10,2.264000
+i64toa_sequential,lut,11,2.493000
+i64toa_sequential,lut,12,2.627000
+i64toa_sequential,lut,13,2.843000
+i64toa_sequential,lut,14,2.959000
+i64toa_sequential,lut,15,3.209000
+i64toa_sequential,lut,16,3.314000
+i64toa_sequential,lut,17,3.555000
+i64toa_sequential,lut,18,3.662000
+i64toa_sequential,lut,19,3.919000
+i64toa_sequential,lut,20,3.918000
+i64toa_random,lut,0,72.192000
+i64toa_sequential,count,1,0.704000
+i64toa_sequential,count,2,0.892000
+i64toa_sequential,count,3,1.118000
+i64toa_sequential,count,4,1.315000
+i64toa_sequential,count,5,1.466000
+i64toa_sequential,count,6,1.649000
+i64toa_sequential,count,7,1.849000
+i64toa_sequential,count,8,2.042000
+i64toa_sequential,count,9,2.244000
+i64toa_sequential,count,10,2.448000
+i64toa_sequential,count,11,2.653000
+i64toa_sequential,count,12,2.868000
+i64toa_sequential,count,13,3.085000
+i64toa_sequential,count,14,3.304000
+i64toa_sequential,count,15,3.519000
+i64toa_sequential,count,16,3.734000
+i64toa_sequential,count,17,3.953000
+i64toa_sequential,count,18,4.174000
+i64toa_sequential,count,19,4.461000
+i64toa_sequential,count,20,4.461000
+i64toa_random,count,0,76.189000
+i64toa_sequential,naive,1,0.492000
+i64toa_sequential,naive,2,0.743000
+i64toa_sequential,naive,3,1.033000
+i64toa_sequential,naive,4,1.280000
+i64toa_sequential,naive,5,1.561000
+i64toa_sequential,naive,6,1.850000
+i64toa_sequential,naive,7,2.084000
+i64toa_sequential,naive,8,2.365000
+i64toa_sequential,naive,9,2.683000
+i64toa_sequential,naive,10,2.859000
+i64toa_sequential,naive,11,3.128000
+i64toa_sequential,naive,12,3.524000
+i64toa_sequential,naive,13,3.657000
+i64toa_sequential,naive,14,3.928000
+i64toa_sequential,naive,15,4.406000
+i64toa_sequential,naive,16,4.479000
+i64toa_sequential,naive,17,4.766000
+i64toa_sequential,naive,18,5.254000
+i64toa_sequential,naive,19,5.288000
+i64toa_sequential,naive,20,5.291000
+i64toa_random,naive,0,78.520000
+i64toa_sequential,countlut,1,0.549000
+i64toa_sequential,countlut,2,0.602000
+i64toa_sequential,countlut,3,0.773000
+i64toa_sequential,countlut,4,0.863000
+i64toa_sequential,countlut,5,1.013000
+i64toa_sequential,countlut,6,1.145000
+i64toa_sequential,countlut,7,1.325000
+i64toa_sequential,countlut,8,1.469000
+i64toa_sequential,countlut,9,1.545000
+i64toa_sequential,countlut,10,1.652000
+i64toa_sequential,countlut,11,1.765000
+i64toa_sequential,countlut,12,1.841000
+i64toa_sequential,countlut,13,1.967000
+i64toa_sequential,countlut,14,2.064000
+i64toa_sequential,countlut,15,2.191000
+i64toa_sequential,countlut,16,2.304000
+i64toa_sequential,countlut,17,2.407000
+i64toa_sequential,countlut,18,2.549000
+i64toa_sequential,countlut,19,2.698000
+i64toa_sequential,countlut,20,2.728000
+i64toa_random,countlut,0,52.044000
+</textarea>
+</div>
+<div class="row" id="downloadDD" style="display: none">
+<div class="btn-group pull-right" >
+    <button class="btn dropdown-toggle" data-toggle="dropdown"><span class="glyphicon glyphicon-picture"></span></button>
+    <ul class="dropdown-menu">
+        <li><a tabindex="-1" href="#" dltype="image/jpeg">JPEG</a></li>
+        <li><a tabindex="-1" href="#" dltype="image/png">PNG</a></li>
+        <li><a tabindex="-1" href="#" dltype="application/pdf">PDF</a></li>
+        <li><a tabindex="-1" href="#" dltype="image/svg+xml">SVG</a></li>
+    </ul>
+</div>
+</div>
+<form method="post" action="http://export.highcharts.com/" id="imageGetForm">
+    <input type="hidden" name="filename" id="imageFilename" value="" />
+    <input type="hidden" name="type" id="imageGetFormTYPE" value="" />
+    <input type="hidden" name="width" value="900" />
+    <input type="hidden" name="svg" value="" id="imageGetFormSVG" />
+</form>
+</div>
+</body>
+</html>
