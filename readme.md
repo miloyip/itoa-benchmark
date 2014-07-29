@@ -1,6 +1,6 @@
 # itoa Benchmark
 
-Copyright(c) 2011-2014 Milo Yip (miloyip@gmail.com)
+Copyright(c) 2014 Milo Yip (miloyip@gmail.com)
 
 ## Introduction
 
