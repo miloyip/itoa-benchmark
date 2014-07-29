@@ -46,25 +46,30 @@ Each digit group is run for 100000 times. The minimum time duration is measured 
 
 ## Results
 
-The following are `sequential` results measured on a PC (Core i7 920 @2.67Ghz), where `u32toa()` is compiled by Visual C++ 2013 and run on Windows 64-bit:
+The following are `sequential` results measured on a PC (Core i7 920 @2.67Ghz), where `u32toa()` is compiled by Visual C++ 2013 and run on Windows 64-bit. The speedup is based on `sprintf()`.
 
-Function   | Time (ms)  | Speedup 
------------|-----------:|-------:
-sprintf    | 184.511    | 1.00x
-vc         | 61.508     | 3.00x
-naive      | 26.704     | 6.91x
-count      | 20.493     | 9.00x
-lut        | 17.771     | 10.38x
-countlut   | 9.932      | 18.58x
-branchlut  | 8.427      | 21.90x
-sse2       | 8.045      | 22.94x
-null       | 2.138      | 86.29x
+Function      | Time (ms)  | Speedup 
+--------------|-----------:|-------:
+ostringstream | 991.234    | 0.19x
+ostrstream    | 931.916    | 0.20x
+to_string     | 232.894    | 0.81x
+sprintf       | 188.733    | 1.00x
+vc            | 61.509     | 3.07x
+naive         | 26.739     | 7.06x
+count         | 20.723     | 9.11x
+lut           | 17.770     | 10.62x
+countlut      | 9.920      | 19.03x
+branchlut     | 8.474      | 22.27x
+sse2          | 7.646      | 24.68x
+null          | 2.533      | 74.50x
 
 ![corei7920@2.67_win64_vc2013_u32toa_sequential_time](result/corei7920@2.67_win64_vc2013_u32toa_sequential_time.png)
 
 ![corei7920@2.67_win64_vc2013_u32toa_sequential_timedigit](result/corei7920@2.67_win64_vc2013_u32toa_sequential_timedigit.png)
 
 Note that the `null` implementation does nothing. It measures the overheads of looping and function call.
+
+Since the C++ standard library implementations (`ostringstream`, `ostrstream`, `to_string`) are slow, they are turned off by default. User can re-enable them by defining `RUN_CPPITOA` macro.
 
 Some results of various configurations are located at `itoa-benchmark/result`. They can be accessed online, with interactivity provided by [Google Charts](https://developers.google.com/chart/):
 
@@ -75,17 +80,20 @@ Some results of various configurations are located at `itoa-benchmark/result`. T
 
 ## Implementations
 
-Function   | Description
------------|-----------
-sprintf    | `sprintf()` in C standard library
-vc         | Visual C++'s `_itoa()`, `_i64toa()`, `_ui64toa()`
-naive      | Compute division/modulo of 10 for each digit, store digits in temp array and copy to buffer in reverse order.
-count      | Count number of decimal digits first, using technique from [1].
-lut        | Uses lookup table (LUT) of digit pairs for division/modulo of 100. Mentioned in [2]
-countlut   | Combines count and lut.
-branchlut  | Use branching to divide-and-conquer the range of value, make computation more parallel.
-sse2       | Based on branchlut scheme, use SSE2 SIMD instructions to convert 8 digits in parallel. The algorithm is designed by Wojciech Muła [3]. (Experiment shows it is useful for values equal to or more than 9 digits)
-null       | Do nothing.
+Function      | Description
+--------------|-----------
+ostringstream | `std::ostringstream` in C++ standard library.
+ostrstream    | `std::ostrstream` in C++ standard library.
+to_string     | `std::to_string()` in C++11 standard library.
+sprintf       | `sprintf()` in C standard library
+vc            | Visual C++'s `_itoa()`, `_i64toa()`, `_ui64toa()`
+naive         | Compute division/modulo of 10 for each digit, store digits in temp array and copy to buffer in reverse order.
+count         | Count number of decimal digits first, using technique from [1].
+lut           | Uses lookup table (LUT) of digit pairs for division/modulo of 100. Mentioned in [2]
+countlut      | Combines count and lut.
+branchlut     | Use branching to divide-and-conquer the range of value, make computation more parallel.
+sse2          | Based on branchlut scheme, use SSE2 SIMD instructions to convert 8 digits in parallel. The algorithm is designed by Wojciech Muła [3]. (Experiment shows it is useful for values equal to or more than 9 digits)
+null          | Do nothing.
 
 ## FAQ
 
