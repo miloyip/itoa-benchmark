@@ -24,6 +24,8 @@ void i64toa_to_string(int64_t value, char* buffer) {
 	strcpy(buffer, std::to_string(value).c_str());
 }
 
+#if RUN_CPPITOA
 REGISTER_TEST(to_string);
+#endif
 
 #endif

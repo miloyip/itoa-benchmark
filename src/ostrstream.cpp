@@ -26,4 +26,6 @@ void i64toa_ostrstream(int64_t value, char* buffer) {
 	oss << value << std::ends;
 }
 
+#if RUN_CPPITOA
 REGISTER_TEST(ostrstream);
+#endif

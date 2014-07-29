@@ -45,7 +45,7 @@ solution "benchmark"
 		defines { "_CRT_SECURE_NO_WARNINGS" }
 		
 	configuration "gmake"
-		buildoptions "-msse4.2 -Werror -Wall -Wextra"
+		buildoptions "-msse4.2 -Wall -Wextra"
 
 	project "itoa"
 		kind "ConsoleApp"

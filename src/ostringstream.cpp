@@ -30,4 +30,6 @@ void i64toa_ostringstream(int64_t value, char* buffer) {
 	strcpy(buffer, oss.str().c_str());
 }
 
+#if RUN_CPPITOA
 REGISTER_TEST(ostringstream);
+#endif
