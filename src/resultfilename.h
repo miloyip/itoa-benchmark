@@ -15,18 +15,24 @@
 #elif defined(__APPLE__)
 #	include "TargetConditionals.h"
 #	if TARGET_OS_IPHONE
-#     	ifdef __LP64__
+#		ifdef __LP64__
 #			define OS "ios64"
 #		else
 #			define OS "ios32"
 #		endif
 #	elif TARGET_OS_MAC
-#       ifdef __amd64__
-#	    	define OS "mac64"
+#		ifdef __amd64__
+#			define OS "mac64"
 #		else
 #			define OS "mac32"
 #		endif
-#   endif
+#	endif
+#elif defined(__linux)
+#	ifdef __LP64__
+#		define OS "linux64"
+#	else
+#		define OS "linux32"
+#	endif
 #endif
 
 #ifndef OS
