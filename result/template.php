@@ -8,7 +8,7 @@
 <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
 <script>
 $(function() {
-	google.load("visualization", "1", {packages:["corechart"]});
+  google.load("visualization", "1", {packages:["corechart"]});
 
     var csv = $('#textInput').val();
     var data = $.csv.toArrays(csv, {
@@ -16,27 +16,27 @@ $(function() {
     });
 
     // Convert data for bar chart (summing all digits)
-    var timeData = {};	// type -> table
+    var timeData = {};  // type -> table
     var funcRowMap;
 
     for (var i = 1; i < data.length; i++) {
-    	var type = data[i][0];
-   		var func = data[i][1];
+      var type = data[i][0];
+      var func = data[i][1];
       var digit = data[i][2];
-   		var time = data[i][3];
-   		if (timeData[type] == null) {
-   			timeData[type] = [["Function", "Time (ms)"/*, { role: "style" }*/]];
+      var time = data[i][3];
+      if (timeData[type] == null) {
+        timeData[type] = [["Function", "Time (ns)"/*, { role: "style" }*/]];
         if (digit != 0)
-   			  funcRowMap = {};
-   		}
+          funcRowMap = {};
+      }
 
-   		var table = timeData[type];
-   		
+      var table = timeData[type];
+      
       if (digit != 0) {
-     		if (funcRowMap[func] == null)
-     			funcRowMap[func] = table.push([func, 0/*, defaultColors[table.length - 1]*/]) - 1;
-     		
-     		table[funcRowMap[func]][1] += time;
+        if (funcRowMap[func] == null)
+          funcRowMap[func] = table.push([func, 0/*, defaultColors[table.length - 1]*/]) - 1;
+        
+        table[funcRowMap[func]][1] += time;
       }
       else
         table.push([func, time]);
@@ -47,64 +47,78 @@ $(function() {
     var funcColumnMap;
 
     for (var i = 1; i < data.length; i++) {
-    	var type = data[i][0];
-   		var func = data[i][1];
-		  var digit = data[i][2];
-   		var time = data[i][3];
+      var type = data[i][0];
+      var func = data[i][1];
+      var digit = data[i][2];
+      var time = data[i][3];
 
       if (digit == 0)
         continue;
 
-   		if (timeDigitData[type] == null) {
-   			timeDigitData[type] = [["Digit"]];
-   			funcColumnMap = {};
-   		}
+      if (timeDigitData[type] == null) {
+        timeDigitData[type] = [["Digit"]];
+        funcColumnMap = {};
+      }
 
-   		var table = timeDigitData[type];
+      var table = timeDigitData[type];
 
-   		if (funcColumnMap[func] == null)
-   			funcColumnMap[func] = table[0].push(func) - 1;
+      if (funcColumnMap[func] == null)
+        funcColumnMap[func] = table[0].push(func) - 1;
 
-   		var row;
-   		for (row = 1; row < table.length; row++)
-   			if (table[row][0] == digit)
-   				break;
+      var row;
+      for (row = 1; row < table.length; row++)
+        if (table[row][0] == digit)
+          break;
 
-    	if (row == table.length)
-    		table.push([digit]);
+      if (row == table.length)
+        table.push([digit]);
 
-		table[row][funcColumnMap[func]] = time;
-	}
+    table[row][funcColumnMap[func]] = time;
+  }
 
-	for (var type in timeData) {
-		$("#main").append(
+  for (var type in timeData) {
+    $("#main").append(
       $("<a>", {name: type}),
       $("<h2>", {style: "padding-top: 70px; margin-top: -70px;"}).append(type)
     );
 
     $("#section").append($("<li>").append($("<a>", {href: "#" + type}).append(type)));
 
-		drawTable(type, timeData[type]);
-		drawBarChart(type, timeData[type]);
+    drawTable(type, timeData[type]);
+    drawBarChart(type, timeData[type]);
     if (timeDigitData[type] != null)
-		  drawDigitChart(type, timeDigitData[type]);
-	}
+      drawDigitChart(type, timeDigitData[type]);
+  }
 
-	$(".chart").each(function() {
-		var chart = $(this);
-		var d = $("#downloadDD").clone().css("display", "");
-		$('li a', d).each(function() {
-	        $(this).click(function() {
-	            var svg = chart[0].getElementsByTagName('svg')[0].parentNode.innerHTML;
-	            svg=sanitize(svg);
-	            $('#imageFilename').val($("#title").html() + "_" + chart.data("filename"));
-	            $('#imageGetFormTYPE').val($(this).attr('dltype'));
-	            $('#imageGetFormSVG').val(svg);
-	            $('#imageGetForm').submit();
-	        });
-	    });		
-		$(this).after(d);
-	});
+  // Image download button
+  $(".chart").each(function() {
+    var chart = $(this);
+    var d = $("#downloadDD").clone().css("display", "");
+    $('li a', d).each(function() {
+          $(this).click(function() {
+              var svg = chart[0].getElementsByTagName('svg')[0].parentNode.innerHTML;
+              svg=sanitize(svg);
+              $('#imageFilename').val($("#title").html() + "_" + chart.data("filename"));
+              $('#imageGetFormTYPE').val($(this).attr('dltype'));
+              $('#imageGetFormSVG').val(svg);
+              $('#imageGetForm').submit();
+          });
+      });   
+    $(this).after(d);
+  });
+
+  // Show markdown button
+  $(".tablechart").each(function() {
+    var chart = $(this);
+    var type = chart.data("type");
+    var d = $("#showMD").clone().css("display", "");
+    $('.collapse', d).first().attr("id", "tableMD" + type);
+    $('button', d).first().attr("data-target","#tableMD" + type).click(function() {
+      var markdown = DataTableToMarkdown(chart.data("data"));
+      $('textarea', d).val(markdown).attr("rows", markdown.split("\n").length);
+    });
+    $(this).after(d);
+  });
 
   // Add configurations
   var thisConfig = <?="\"".basename($argv[1], '.'.pathinfo($argv[1], PATHINFO_EXTENSION))."\""?>;
@@ -123,97 +137,102 @@ $(function() {
 });
 
 function drawTable(type, timeData) {
-	var data = google.visualization.arrayToDataTable(timeData);
+  var data = google.visualization.arrayToDataTable(timeData);
     data.addColumn('number', 'Speedup');
     data.sort([{ column: 1, desc: true }]);
     var formatter1 = new google.visualization.NumberFormat({ fractionDigits: 3 });
     formatter1.format(data, 1);
 
-	var div = document.createElement("div");
-	div.className = "tablechart";
-	$("#main").append(div);
+    var div = document.createElement("div");
+    div.className = "tablechart";
+    $(div).data("type", type).data("data", data);
+    $("#main").append(div);
     var table = new google.visualization.Table(div);
     redrawTable(0);
     table.setSelection([{ row: 0, column: null}]);
 
     function redrawTable(selectedRow) {
-        // Compute relative time using the first row as basis
-        var basis = data.getValue(selectedRow, 1);
-        for (var rowIndex = 0; rowIndex < data.getNumberOfRows(); rowIndex++)
-            data.setValue(rowIndex, 2, basis / data.getValue(rowIndex, 1));
+      // Compute relative time using the first row as basis
+      var basis = data.getValue(selectedRow, 1);
+      for (var rowIndex = 0; rowIndex < data.getNumberOfRows(); rowIndex++)
+        data.setValue(rowIndex, 2, basis / data.getValue(rowIndex, 1));
 
-        var formatter = new google.visualization.NumberFormat({suffix: 'x'});
-        formatter.format(data, 2); // Apply formatter to second column
+      var formatter = new google.visualization.NumberFormat({suffix: 'x'});
+      formatter.format(data, 2); // Apply formatter to second column
 
-        table.draw(data);
+      table.draw(data);
     }
 
     google.visualization.events.addListener(table, 'select',
     function() {
-        var selection = table.getSelection();
-        if (selection.length > 0) {
-            var item = selection[0];
-            if (item.row != null)
-                redrawTable(item.row);
-        }
-    });
+      var selection = table.getSelection();
+      if (selection.length > 0) {
+        var item = selection[0];
+        if (item.row != null) {
+          redrawTable(item.row);
 
+          // Also update markdown
+          var markdown = DataTableToMarkdown(data);
+          $('textarea', $("#tableMD" + type)).val(markdown);
+        }
+      }
+    });
 }
 
 function drawBarChart(type, timeData) {
-    var defaultColors = ["#3366cc","#dc3912","#ff9900","#109618","#990099","#0099c6","#dd4477","#66aa00","#b82e2e","#316395","#994499","#22aa99","#aaaa11","#6633cc","#e67300","#8b0707","#651067","#329262","#5574a6","#3b3eac","#b77322","#16d620","#b91383","#f4359e","#9c5935","#a9c413","#2a778d","#668d1c","#bea413","#0c5922","#743411"];
+  var defaultColors = ["#3366cc","#dc3912","#ff9900","#109618","#990099","#0099c6","#dd4477","#66aa00","#b82e2e","#316395","#994499","#22aa99","#aaaa11","#6633cc","#e67300","#8b0707","#651067","#329262","#5574a6","#3b3eac","#b77322","#16d620","#b91383","#f4359e","#9c5935","#a9c413","#2a778d","#668d1c","#bea413","#0c5922","#743411"];
 
-	var data = google.visualization.arrayToDataTable(timeData);
-	data.addColumn({ type: "string", role: "style" })
-	for (var rowIndex = 0; rowIndex < data.getNumberOfRows(); rowIndex++)
-		data.setValue(rowIndex, 2, defaultColors[rowIndex]);
+  var data = google.visualization.arrayToDataTable(timeData);
+  data.addColumn({ type: "string", role: "style" })
+  for (var rowIndex = 0; rowIndex < data.getNumberOfRows(); rowIndex++)
+    data.setValue(rowIndex, 2, defaultColors[rowIndex]);
 
-    data.sort([{ column: 1, desc: true }]);
-	var options = { 
-		title: type,
-		chartArea: {'width': '70%', 'height': '70%'},
-		width: 800,
-		height: 300,
-		legend: { position: "none" },
-		hAxis: { title: "Time (ms)" }
-	};
-	var div = document.createElement("div");
-	div.className = "chart";
-	$(div).data("filename", type + "_time");
-	$("#main").append(div);
-	var chart = new google.visualization.BarChart(div);
+  data.sort([{ column: 1, desc: true }]);
+  var options = { 
+    title: type,
+    chartArea: {'width': '70%', 'height': '70%'},
+    width: 800,
+    height: 300,
+    legend: { position: "none" },
+    hAxis: { title: "Time (ns)" }
+  };
+  var div = document.createElement("div");
+  div.className = "chart";
+  $(div).data("filename", type + "_time");
+  $("#main").append(div);
+  var chart = new google.visualization.BarChart(div);
 
-	chart.draw(data, options);
+  chart.draw(data, options);
 }
 
 function drawDigitChart(type, timeDigitData) {
-	var data = google.visualization.arrayToDataTable(timeDigitData);
+  var data = google.visualization.arrayToDataTable(timeDigitData);
 
-	var options = { 
-		title: type,
-		chartArea: {'width': '70%', 'height': '80%'},
-		hAxis: {
-			title: "Digit",
-			gridlines: { count: timeDigitData.length - 1 },
-			maxAlternation: 1,
-			minTextSpacing: 0
-		},
-		vAxis: {
-			title: "Time (ms) in log scale",
-			logScale: true,
-			minorGridlines: { count: 10 },
+  var options = { 
+    title: type,
+    chartArea: {'width': '70%', 'height': '80%'},
+    hAxis: {
+      title: "Digit",
+      gridlines: { count: timeDigitData.length - 1 },
+      maxAlternation: 1,
+      minTextSpacing: 0
+    },
+    vAxis: {
+      title: "Time (ns) in log scale",
+      logScale: true,
+      minorGridlines: { count: 10 },
       baseline: 0
-		},
-		width: 800,
-		height: 600
-	};
-	var div = document.createElement("div");
-	div.className = "chart";
-	$(div).data("filename", type + "_timedigit");
-	$("#main").append(div);
-	var chart = new google.visualization.LineChart(div);
+    },
+    width: 800,
+    height: 600
+  };
+  var div = document.createElement("div");
+  div.className = "chart";
+  $(div).data("filename", type + "_timedigit");
+  $("#main").append(div);
+  var chart = new google.visualization.LineChart(div);
 
-	chart.draw(data, options);
+  chart.draw(data, options);
 }
 
 // http://jsfiddle.net/P6XXM/
@@ -258,6 +277,52 @@ function sanitize(svg) {
 
     return svg;
 }
+
+function DataTableToMarkdown(dataTable) {
+  var s = "|";
+  var columnCount = dataTable.getNumberOfColumns();
+  var rowCount = dataTable.getNumberOfRows();
+
+  // compute columnWidths & padding
+  var columnWidths = new Array();
+  var columnPadRight = new Array();
+  for (var columnIndex = 0; columnIndex < columnCount; columnIndex++) {
+    columnWidths.push(dataTable.getColumnLabel(columnIndex).length);
+    columnPadRight.push(dataTable.getColumnType(columnIndex) == 'number');
+  }
+  for (var rowIndex = 0; rowIndex < rowCount; rowIndex++)
+    for (var columnIndex = 0; columnIndex < columnCount; columnIndex++)
+      columnWidths[columnIndex] = Math.max(columnWidths[columnIndex], dataTable.getFormattedValue(rowIndex, columnIndex).length);
+
+  function pad(columnIndex, s) {
+    var spaces = Array(columnWidths[columnIndex] - s.length + 1).join(' ');
+    return columnPadRight[columnIndex] ? spaces + s : s + spaces;
+  }
+
+  // header
+  for (var columnIndex = 0; columnIndex < columnCount; columnIndex++)
+    s += pad(columnIndex, dataTable.getColumnLabel(columnIndex)) + "|";
+  s += "\n|";
+
+  // header line
+  for (var columnIndex = 0; columnIndex < columnCount; columnIndex++) {
+    if (columnPadRight[columnIndex])
+      s += Array(columnWidths[columnIndex]).join("-") + ":|";
+    else
+      s += Array(columnWidths[columnIndex] + 1).join("-") + "|";
+  }
+  s += "\n";
+
+  // contents
+  for (var rowIndex = 0; rowIndex < rowCount; rowIndex++) {
+    s += "|";
+    for (var columnIndex = 0; columnIndex < columnCount; columnIndex++)
+      s += pad(columnIndex, dataTable.getFormattedValue(rowIndex, columnIndex)) + "|";
+    s += "\n";
+  }
+
+  return s;
+}
 </script>
 <style type="text/css">
 @media (min-width: 800px) {
@@ -266,17 +331,17 @@ function sanitize(svg) {
   }
 }
 textarea {
-	font-family: Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+  font-family: Consolas, 'Liberation Mono', Menlo, Courier, monospace;
 }
 .tablechart {
-	width: 700px;
-	margin: auto;
-	padding-top: 20px;
-	padding-bottom: 20px;
+  width: 700px;
+  margin: auto;
+  padding-top: 20px;
+  padding-bottom: 20px;
 }
 .chart {
-	padding-top: 20px;
-	padding-bottom: 20px;
+  padding-top: 20px;
+  padding-bottom: 20px;
 }
 body { padding-top: 70px; }
 </style>
@@ -332,6 +397,17 @@ body { padding-top: 70px; }
         <li><a tabindex="-1" href="#" dltype="application/pdf">PDF</a></li>
         <li><a tabindex="-1" href="#" dltype="image/svg+xml">SVG</a></li>
     </ul>
+</div>
+</div>
+<div class="row" id="showMD" style="display: none">
+<div class="btn-group pull-right" >
+    <button class="btn dropdown-toggle" data-toggle="collapse"><span class="glyphicon glyphicon-list-alt"></span></button>
+</div>
+<br/>
+<br/>
+<div class="collapse">
+<textarea class="form-control" rows="5" readonly>
+</textarea>
 </div>
 </div>
 <form method="post" action="http://export.highcharts.com/" id="imageGetForm">
