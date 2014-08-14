@@ -15,7 +15,7 @@ $(function() {
         onParseValue: $.csv.hooks.castToScalar
     });
 
-    // Convert data for bar chart (summing all digits)
+    // Convert data for bar chart (averaging all digits)
     var timeData = {};  // type -> table
     var funcRowMap;
 
@@ -34,12 +34,25 @@ $(function() {
       
       if (digit != 0) {
         if (funcRowMap[func] == null)
-          funcRowMap[func] = table.push([func, 0/*, defaultColors[table.length - 1]*/]) - 1;
+          funcRowMap[func] = table.push([func, []/*, defaultColors[table.length - 1]*/]) - 1;
         
-        table[funcRowMap[func]][1] += time;
+        table[funcRowMap[func]][1].push(time);
       }
       else
         table.push([func, time]);
+    }
+
+    // averaging
+    for (var type in timeData) {
+      var table = timeData[type];
+      for (var i = 0; i < table.length; i++) {
+        if (typeof(table[i][1]) == "object") {
+          var sum = 0;
+          for (var j = 0; j < table[i][1].length; j++)
+            sum += table[i][1][j];
+          table[i][1] = sum / table[i][1].length;
+        }
+      }
     }
 
     // Convert data for drawing line chart per sequential digit
@@ -122,7 +135,7 @@ $(function() {
 
   // Add configurations
   var thisConfig = "corei7920@2.67_cygwin32_gcc4.8";
-  var configurations = ["corei53330S@2.7_mac64_clang5.1","corei7920@2.67_cygwin32_gcc4.8","corei7920@2.67_cygwin64_gcc4.8","corei7920@2.67_win32_vc2013","corei7920@2.67_win64_vc2013"];
+  var configurations = ["corei7920@2.67_cygwin32_gcc4.8","corei7920@2.67_cygwin64_gcc4.8","corei7920@2.67_win32_vc2013","corei7920@2.67_win64_vc2013"];
 
   for (var i in configurations) {
     var c = configurations[i];
