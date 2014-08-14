@@ -143,13 +143,15 @@ void BenchSequential(void(*f)(T, char*), const char* type, const char* fname, FI
 			duration = std::min(duration, timer.GetElapsedMilliseconds());
 		}
 
+		duration *= 1e6 / kIterationPerDigit; // convert to nano second per operation
+
 		minDuration = std::min(minDuration, duration);
 		maxDuration = std::max(maxDuration, duration);
 		fprintf(fp, "%s_sequential,%s,%d,%f\n", type, fname, digit, duration);
 		start = end;
 	}
 
-	printf("[%8.3fms, %8.3fms]\n", minDuration, maxDuration);
+	printf("[%8.3fns, %8.3fns]\n", minDuration, maxDuration);
 }
 
 template <class T>
@@ -211,9 +213,10 @@ void BenchRandom(void(*f)(T, char*), const char* type, const char* fname, FILE* 
 		timer.Stop();
 		duration = std::min(duration, timer.GetElapsedMilliseconds());
 	}
+	duration *= 1e6 / (kIterationForRandom * n); // convert to nano second per operation
 	fprintf(fp, "%s_random,%s,0,%f\n", type, fname, duration);
 
-	printf("%8.3fms\n", duration);
+	printf("%8.3fns\n", duration);
 }
 
 template <typename T>
@@ -237,7 +240,7 @@ void BenchAll() {
 	else
 		fp = fopen(RESULT_FILENAME, "w");
 
-	fprintf(fp, "Type,Function,Digit,Time(ms)\n");
+	fprintf(fp, "Type,Function,Digit,Time(ns)\n");
 
 	const TestList& tests = TestManager::Instance().GetTests();
 

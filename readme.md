@@ -48,20 +48,21 @@ Each digit group is run for 100000 times. The minimum time duration is measured 
 
 The following are `sequential` results measured on a PC (Core i7 920 @2.67Ghz), where `u32toa()` is compiled by Visual C++ 2013 and run on Windows 64-bit. The speedup is based on `sprintf()`.
 
-Function      | Time (ms)  | Speedup 
---------------|-----------:|-------:
-ostringstream | 991.234    | 0.19x
-ostrstream    | 931.916    | 0.20x
-to_string     | 232.894    | 0.81x
-sprintf       | 188.733    | 1.00x
-vc            | 61.509     | 3.07x
-naive         | 26.739     | 7.06x
-count         | 20.723     | 9.11x
-lut           | 17.770     | 10.62x
-countlut      | 9.920      | 19.03x
-branchlut     | 8.474      | 22.27x
-sse2          | 7.646      | 24.68x
-null          | 2.533      | 74.50x
+|Function     | Time (ns)|Speedup|
+|-------------|---------:|------:|
+|ostringstream|13,105.972|  0.18x|
+|ostrstream   |12,137.536|  0.19x|
+|to_string    | 2,740.367|  0.84x|
+|sprintf      | 2,309.193|  1.00x|
+|vc           |   957.390|  2.41x|
+|naive        |   230.989| 10.00x|
+|count        |   230.525| 10.02x|
+|lut          |   154.455| 14.95x|
+|countlut     |   133.137| 17.34x|
+|branchlut    |   113.885| 20.28x|
+|sse2         |   102.648| 22.50x|
+|null         |    21.379|108.01x|
+
 
 ![corei7920@2.67_win64_vc2013_u32toa_sequential_time](result/corei7920@2.67_win64_vc2013_u32toa_sequential_time.png)
 
