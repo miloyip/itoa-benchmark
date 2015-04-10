@@ -9,19 +9,19 @@
 #include "test.h"
 
 void u32toa_to_string(uint32_t value, char* buffer) {
-	strcpy(buffer, std::to_string(value).c_str());
+    strcpy(buffer, std::to_string(value).c_str());
 }
 
 void i32toa_to_string(int32_t value, char* buffer) {
-	strcpy(buffer, std::to_string(value).c_str());
+    strcpy(buffer, std::to_string(value).c_str());
 }
 
 void u64toa_to_string(uint64_t value, char* buffer) {
-	strcpy(buffer, std::to_string(value).c_str());
+    strcpy(buffer, std::to_string(value).c_str());
 }
 
 void i64toa_to_string(int64_t value, char* buffer) {
-	strcpy(buffer, std::to_string(value).c_str());
+    strcpy(buffer, std::to_string(value).c_str());
 }
 
 #if RUN_CPPITOA

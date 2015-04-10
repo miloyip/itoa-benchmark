@@ -4,14 +4,14 @@
 // Additional count number of digit pass 
 
 void u32toa_count(uint32_t value, char* buffer) {
-	unsigned digit = CountDecimalDigit32(value);
-	buffer += digit;
-	*buffer = '\0';
+    unsigned digit = CountDecimalDigit32(value);
+    buffer += digit;
+    *buffer = '\0';
 
-	do {
-		*--buffer = char(value % 10) + '0';
-		value /= 10;
-	} while (value > 0);
+    do {
+        *--buffer = char(value % 10) + '0';
+        value /= 10;
+    } while (value > 0);
 }
 
 void i32toa_count(int32_t value, char* buffer) {
@@ -24,14 +24,14 @@ void i32toa_count(int32_t value, char* buffer) {
 }
 
 void u64toa_count(uint64_t value, char* buffer) {
-	unsigned digit = CountDecimalDigit64(value);
-	buffer += digit;
-	*buffer = '\0';
+    unsigned digit = CountDecimalDigit64(value);
+    buffer += digit;
+    *buffer = '\0';
 
-	do {
-		*--buffer = char(value % 10) + '0';
-		value /= 10;
-	} while (value > 0);
+    do {
+        *--buffer = char(value % 10) + '0';
+        value /= 10;
+    } while (value > 0);
 }
 
 void i64toa_count(int64_t value, char* buffer) {

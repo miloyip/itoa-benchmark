@@ -241,7 +241,7 @@ void u64toa_branchlut(uint64_t value, char* buffer) {
         *buffer++ = gDigitsLut[d8 + 1];
     }
     
-	*buffer = '\0';
+    *buffer = '\0';
 }
 
 void i64toa_branchlut(int64_t value, char* buffer) {
@@ -251,7 +251,7 @@ void i64toa_branchlut(int64_t value, char* buffer) {
         u = ~u + 1;
     }
 
-	u64toa_branchlut(u, buffer);
+    u64toa_branchlut(u, buffer);
 }
 
 REGISTER_TEST(branchlut);
