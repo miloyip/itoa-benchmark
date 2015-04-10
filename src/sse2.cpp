@@ -173,12 +173,12 @@ inline void u32toa_sse2(uint32_t value, char* buffer) {
 }
 
 void i32toa_sse2(int32_t value, char* buffer) {
+    uint32_t u = static_cast<uint32_t>(value);
 	if (value < 0) {
 		*buffer++ = '-';
-		value = -value;
+        u = ~u + 1;
 	}
-
-	u32toa_sse2(static_cast<uint32_t>(value), buffer);
+	u32toa_sse2(u, buffer);
 }
 
 inline void u64toa_sse2(uint64_t value, char* buffer) {
@@ -310,12 +310,12 @@ inline void u64toa_sse2(uint64_t value, char* buffer) {
 }
 
 void i64toa_sse2(int64_t value, char* buffer) {
+    uint64_t u = static_cast<uint64_t>(value);
 	if (value < 0) {
 		*buffer++ = '-';
-		value = -value;
+		u = ~u + 1;
 	}
-
-	u64toa_sse2(static_cast<uint64_t>(value), buffer);
+	u64toa_sse2(u, buffer);
 }
 
 REGISTER_TEST(sse2);

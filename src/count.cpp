@@ -15,11 +15,12 @@ void u32toa_count(uint32_t value, char* buffer) {
 }
 
 void i32toa_count(int32_t value, char* buffer) {
-	if (value < 0) {
-		*buffer++ = '-';
-		value = -value;
-	}
-	u32toa_count(static_cast<uint32_t>(value), buffer);
+    uint32_t u = static_cast<uint32_t>(value);
+    if (value < 0) {
+        *buffer++ = '-';
+        u = ~u + 1;
+    }
+    u32toa_count(u, buffer);
 }
 
 void u64toa_count(uint64_t value, char* buffer) {
@@ -34,11 +35,12 @@ void u64toa_count(uint64_t value, char* buffer) {
 }
 
 void i64toa_count(int64_t value, char* buffer) {
-	if (value < 0) {
-		*buffer++ = '-';
-		value = -value;
-	}
-	u64toa_count(static_cast<uint64_t>(value), buffer);
+    uint64_t u = static_cast<uint64_t>(value);
+    if (value < 0) {
+        *buffer++ = '-';
+        u = ~u + 1;
+    }
+    u64toa_count(u, buffer);
 }
 
 REGISTER_TEST(count);

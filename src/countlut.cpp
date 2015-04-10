@@ -28,12 +28,12 @@ void u32toa_countlut(uint32_t value, char* buffer) {
 }
 
 void i32toa_countlut(int32_t value, char* buffer) {
-	if (value < 0) {
-		*buffer++ = '-';
-		value = -value;
-	}
-	
-	u32toa_countlut(static_cast<uint32_t>(value), buffer);
+    uint32_t u = static_cast<uint32_t>(value);
+    if (value < 0) {
+        *buffer++ = '-';
+        u = ~u + 1;
+    }
+    u32toa_countlut(u, buffer);
 }
 
 void u64toa_countlut(uint64_t value, char* buffer) {
@@ -84,12 +84,12 @@ void u64toa_countlut(uint64_t value, char* buffer) {
 }
 
 void i64toa_countlut(int64_t value, char* buffer) {
-	if (value < 0) {
-		*buffer++ = '-';
-		value = -value;
-	}
-	
-	u64toa_countlut(static_cast<uint64_t>(value), buffer);
+    uint64_t u = static_cast<uint64_t>(value);
+    if (value < 0) {
+        *buffer++ = '-';
+        u = ~u + 1;
+    }
+    u64toa_countlut(u, buffer);
 }
 
 REGISTER_TEST(countlut);

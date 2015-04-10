@@ -78,12 +78,13 @@ void u32toa_branchlut(uint32_t value, char* buffer) {
 }
 
 void i32toa_branchlut(int32_t value, char* buffer) {
-	if (value < 0) {
-		*buffer++ = '-';
-		value = -value;
-	}
+    uint32_t u = static_cast<uint32_t>(value);
+    if (value < 0) {
+        *buffer++ = '-';
+        u = ~u + 1;
+    }
 
-	u32toa_branchlut(static_cast<uint32_t>(value), buffer);
+    u32toa_branchlut(u, buffer);
 }
 
 void u64toa_branchlut(uint64_t value, char* buffer) {
@@ -244,12 +245,13 @@ void u64toa_branchlut(uint64_t value, char* buffer) {
 }
 
 void i64toa_branchlut(int64_t value, char* buffer) {
-	if (value < 0) {
-		*buffer++ = '-';
-		value = -value;
-	}
+    uint64_t u = static_cast<uint64_t>(value);
+    if (value < 0) {
+        *buffer++ = '-';
+        u = ~u + 1;
+    }
 
-	u64toa_branchlut(static_cast<uint64_t>(value), buffer);
+	u64toa_branchlut(u, buffer);
 }
 
 REGISTER_TEST(branchlut);
