@@ -40,7 +40,7 @@ Each digit group is run for 100000 times. The minimum time duration is measured 
 3. Run `premake.bat` or `premake.sh` in `itoa-benchmark/build`
 4. On Windows, build the solution at `itoa-benchmark/build/vs2008/` or `/vs2010/`.
 5. On other platforms, run GNU `make config=release32` (or `release64`) at `itoa-benchmark/build/gmake/`
-6. On success, run the `itoa` executable is generated at `itoa-benchmark/`
+6. On success, run the `itoa` executable is generated at `itoa-benchmark/bin/`
 7. The results in CSV format will be written to `itoa-benchmark/result`.
 8. Run GNU `make` in `itoa-benchmark/result` to generate results in HTML.
 
@@ -85,6 +85,7 @@ to_string     | `std::to_string()` in C++11 standard library.
 sprintf       | `sprintf()` in C standard library
 vc            | Visual C++'s `_itoa()`, `_i64toa()`, `_ui64toa()`
 naive         | Compute division/modulo of 10 for each digit, store digits in temp array and copy to buffer in reverse order.
+unnamed       | Compute division/modulo of 10 for each digit, store directly in buffer
 count         | Count number of decimal digits first, using technique from [1].
 lut           | Uses lookup table (LUT) of digit pairs for division/modulo of 100. Mentioned in [2]
 countlut      | Combines count and lut.
