@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <limits>
 #include "test.h"
 
 void u32toa_unnamed(uint32_t value, char* buffer) {
@@ -17,7 +18,7 @@ void u32toa_unnamed(uint32_t value, char* buffer) {
 }
 
 void i32toa_unnamed(int32_t value, char* buffer) {
-    if (value == INT32_MIN) {
+    if (value == std::numeric_limits<int32_t>::min()) {
         memcpy(buffer, "-2147483648\0", 12);
         return;
     }
@@ -72,7 +73,7 @@ void u64toa_unnamed(uint64_t value, char* buffer) {
 }
 
 void i64toa_unnamed(int64_t value, char* buffer) {
-    if (value == INT64_MIN) {
+    if (value == std::numeric_limits<int64_t>::min()) {
         memcpy(buffer, "-9223372036854775808\0", 21);
         return;
     }
