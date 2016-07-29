@@ -1,4 +1,4 @@
-#if __cpluslpus >= 201103L || _MSC_VER >= 1700
+#if __cplusplus >= 201103L || _MSC_VER >= 1700
 
 #ifdef _MSC_VER
 #include "msinttypes/inttypes.h"
