@@ -1,15 +1,16 @@
 <html>
 <head>
 <script src="http://code.jquery.com/jquery-1.8.2.js"></script>
-<script src="http://www.google.com/jsapi?autoload={'modules':[{'name':'visualization','version':'1','packages':['controls', 'charteditor']}]}"></script>
-<script src="http://jquery-csv.googlecode.com/git/src/jquery.csv.js"></script>
+<script src="https://www.gstatic.com/charts/loader.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-csv/0.71/jquery.csv-0.71.min.js"></script>
 <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
 <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap-theme.min.css">
 <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
-<script>
-$(function() {
-  google.load("visualization", "1", {packages:["corechart"]});
+<script type="text/javascript">
+  google.charts.load('current', {packages: ['corechart', 'table']});
+  google.charts.setOnLoadCallback(drawChart);
 
+function drawChart() {
     var csv = $('#textInput').val();
     var data = $.csv.toArrays(csv, {
         onParseValue: $.csv.hooks.castToScalar
@@ -31,11 +32,11 @@ $(function() {
       }
 
       var table = timeData[type];
-      
+
       if (digit != 0) {
         if (funcRowMap[func] == null)
           funcRowMap[func] = table.push([func, []/*, defaultColors[table.length - 1]*/]) - 1;
-        
+
         table[funcRowMap[func]][1].push(time);
       }
       else
@@ -116,7 +117,7 @@ $(function() {
               $('#imageGetFormSVG').val(svg);
               $('#imageGetForm').submit();
           });
-      });   
+      });
     $(this).after(d);
   });
 
@@ -136,7 +137,7 @@ $(function() {
   // Add configurations
   var thisConfig = <?="\"".basename($argv[1], '.'.pathinfo($argv[1], PATHINFO_EXTENSION))."\""?>;
   var configurations = [<?=
-    implode(",", 
+    implode(",",
       array_map(
         function ($filename) {
           return "\"" . basename($filename, ".csv") . "\"";
@@ -147,7 +148,7 @@ $(function() {
     var c = configurations[i];
     $("#configuration").append($("<li>", {class : (c == thisConfig ? "active" : "")}).append($("<a>", {href: c + ".html"}).append(c)));
   }
-});
+}
 
 function drawTable(type, timeData) {
   var data = google.visualization.arrayToDataTable(timeData);
@@ -201,7 +202,7 @@ function drawBarChart(type, timeData) {
     data.setValue(rowIndex, 2, defaultColors[rowIndex]);
 
   data.sort([{ column: 1, desc: true }]);
-  var options = { 
+  var options = {
     title: type,
     chartArea: {'width': '70%', 'height': '70%'},
     width: 800,
@@ -221,7 +222,7 @@ function drawBarChart(type, timeData) {
 function drawDigitChart(type, timeDigitData) {
   var data = google.visualization.arrayToDataTable(timeDigitData);
 
-  var options = { 
+  var options = {
     title: type,
     chartArea: {'width': '70%', 'height': '80%'},
     hAxis: {
@@ -429,6 +430,5 @@ body { padding-top: 70px; }
     <input type="hidden" name="width" value="900" />
     <input type="hidden" name="svg" value="" id="imageGetFormSVG" />
 </form>
-</div>
 </body>
 </html>
