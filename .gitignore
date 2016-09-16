@@ -4,3 +4,5 @@
 /intermediate
 result/result.csv
 result/result.html
+
+src/machine.h
