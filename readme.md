@@ -35,14 +35,8 @@ Each digit group is run for 100000 times. The minimum time duration is measured 
 
 ## Build and Run
 
-1. Obtain [premake4](http://industriousone.com/premake/download).
-2. Copy premake4 executable to `itoa-benchmark/build` folder (or system path).
-3. Run `premake.bat` or `premake.sh` in `itoa-benchmark/build`
-4. On Windows, build the solution at `itoa-benchmark/build/vs2008/` or `/vs2010/`.
-5. On other platforms, run GNU `make config=release32` (or `release64`) at `itoa-benchmark/build/gmake/`
-6. On success, run the `itoa` executable is generated at `itoa-benchmark/bin/`
-7. The results in CSV format will be written to `itoa-benchmark/result`.
-8. Run GNU `make` in `itoa-benchmark/result` to generate results in HTML.
+1. Obtain [premake5](http://industriousone.com/premake/download).
+2. make
 
 ## Results
 
