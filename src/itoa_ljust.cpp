@@ -120,7 +120,7 @@ namespace itoa_ljust {
         uint32_t u = i;
         if (i < 0) {
             *p++ = '-';
-            u = -u;
+            u = (uint32_t)(-(int32_t)u);
         }
         return itoa(u, p);
     }
@@ -143,7 +143,7 @@ namespace itoa_ljust {
         uint64_t u = i;
         if (i < 0) {
             *p++ = '-';
-            u = -u;
+            u = (uint64_t)(-(int64_t)u);
         }
         return itoa(u, p);
     }
