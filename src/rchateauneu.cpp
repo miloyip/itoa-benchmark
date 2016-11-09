@@ -280,7 +280,7 @@ static char * ulltoa_general(char *aBuf, unsigned long long aLL)
 	char * myPtr = aBuf;
 
 	/* First div64 bits, then later 32 bits only. */
-	while (aLL >= ULONG_MAX)
+	while (aLL > ULONG_MAX)
 	{
 		/* See div64_32 in Linux internals, for fast division. */
 		unsigned long long myDiv10000 = aLL / ATOI_TAB_SZ;
