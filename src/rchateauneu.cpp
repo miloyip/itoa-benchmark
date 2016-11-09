@@ -280,7 +280,7 @@ static char * ulltoa_general(char *aBuf, unsigned long long aLL)
 	char * myPtr = aBuf;
 
 	/* First div64 bits, then later 32 bits only. */
-	while (aLL >= ULONG_MAX)
+	while (aLL > ULONG_MAX)
 	{
 		/* See div64_32 in Linux internals, for fast division. */
 		unsigned long long myDiv10000 = aLL / ATOI_TAB_SZ;
@@ -302,9 +302,10 @@ char * ulltoa(char *aBuf, unsigned long long aLL)
 	const char * src = cstItoa + ATOI_TAB_SZ_LOG * aLL;
 	if (aLL < 10000)
 	{
-		if (aLL >= 1000) *aBuf++ = src[0];
-		if (aLL >= 100) *aBuf++ = src[1];
-		if (aLL >= 10) *aBuf++ = src[2];
+		unsigned int anInt = (unsigned int)aLL;
+		if (anInt >= 1000) *aBuf++ = src[0];
+		if (anInt >= 100) *aBuf++ = src[1];
+		if (anInt >= 10) *aBuf++ = src[2];
 		*aBuf++ = src[3];
 		*aBuf = '\0';
 		return aBuf;
