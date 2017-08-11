@@ -9,7 +9,7 @@
         if(t < 10) *p++ = '0' + t; \
         else { \
             t *= 2; \
-            *p++ = IgDigitsLut[t]; \
+            *p++ = gDigitsLut[t]; \
             *p++ = gDigitsLut[t + 1]; \
         } \
     } while(0)
