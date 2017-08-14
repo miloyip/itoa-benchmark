@@ -3,60 +3,67 @@
 #include "test.h"
 
 
-#define BEGIN2(n) \
-    do { \
-        int t = (n); \
-        if(t < 10) *p++ = '0' + t; \
-        else { \
-            t *= 2; \
-            *p++ = gDigitsLut[t]; \
-            *p++ = gDigitsLut[t + 1]; \
-        } \
-    } while(0)
-#define MIDDLE2(n) \
-    do { \
-        int t = (n) * 2; \
-        *p++ = gDigitsLut[t]; \
-        *p++ = gDigitsLut[t + 1]; \
-    } while(0)
-#define BEGIN4(n) \
-    do { \
-        int t4 = (n); \
-        if(t4 < 100) BEGIN2(t4); \
-        else { BEGIN2(t4 / 100); MIDDLE2(t4 % 100); } \
-    } while(0)
-#define MIDDLE4(n) \
-    do { \
-        int t4 = (n); \
-        MIDDLE2(t4 / 100); MIDDLE2(t4 % 100); \
-    } while(0)
-#define BEGIN8(n) \
-    do { \
-        uint32_t t8 = (n); \
-        if(t8 < 10000) BEGIN4(t8); \
-        else { BEGIN4(t8 / 10000); MIDDLE4(t8 % 10000); } \
-    } while(0)
-#define MIDDLE8(n) \
-    do { \
-        uint32_t t8 = (n); \
-        MIDDLE4(t8 / 10000); MIDDLE4(t8 % 10000); \
-    } while(0)
-#define MIDDLE16(n) \
-    do { \
-        uint64_t t16 = (n); \
-        MIDDLE8(t16 / 100000000); MIDDLE8(t16 % 100000000); \
-    } while(0)
+namespace Impl {
+
+struct DigitPair { char data[2]; };
+
+inline void toStringMiddle2(uint8_t x, char*& p) {
+    
+    *reinterpret_cast<DigitPair*>(p) = reinterpret_cast<const DigitPair*>(gDigitsLut)[x], p += 2;
+    
+}
+inline void toStringBegin2(uint8_t x, char*& p) {
+    
+    if(x < 10) *p++ = '0' + x;
+    else toStringMiddle2(x, p);
+    
+}
+inline void toStringMiddle4(uint16_t x, char*& p) {
+    
+    uint8_t a = x / 100, b = x % 100;
+    toStringMiddle2(a, p); toStringMiddle2(b, p);
+    
+}
+inline void toStringBegin4(uint16_t x, char*& p) {
+    
+    if(x < 100) toStringBegin2(x, p);
+    else { uint8_t a = x / 100, b = x % 100; toStringBegin2(a, p), toStringMiddle2(b, p); }
+    
+}
+inline void toStringMiddle8(uint32_t x, char*& p) {
+    
+    uint16_t a = x / 10000, b = x % 10000;
+    toStringMiddle4(a, p), toStringMiddle4(b, p);
+    
+}
+inline void toStringBegin8(uint32_t x, char*& p) {
+    
+    if(x < 10000) toStringBegin4(x, p);
+    else { uint16_t a = x / 10000, b = x % 10000; toStringBegin4(a, p), toStringMiddle4(b, p); }
+    
+}
+inline void toStringMiddle16(uint64_t x, char*& p) {
+    
+    uint32_t a = x / 100000000, b = x % 100000000;
+    toStringMiddle8(a, p), toStringMiddle8(b, p);
+    
+}
+
+}
 
 void u32toa_branchlut2(uint32_t x, char* p) {
     
-    if(x < 100000000) BEGIN8(x);
-    else { BEGIN2(x / 100000000); MIDDLE8(x % 100000000); }
+    if(x < 100000000) Impl::toStringBegin8(x, p);
+    else {
+        uint32_t a = x / 100000000, b = x % 100000000;
+        Impl::toStringBegin2(a, p), Impl::toStringMiddle8(b, p);
+    }
     *p = 0;
     
 }
 void i32toa_branchlut2(int32_t x, char* p) {
     
-    uint64_t t;
+    uint32_t t;
     if(x >= 0) t = x;
     else *p++ = '-', t = -uint32_t(x);
     u32toa_branchlut2(t, p);
@@ -64,9 +71,14 @@ void i32toa_branchlut2(int32_t x, char* p) {
 }
 void u64toa_branchlut2(uint64_t x, char* p) {
     
-    if(x < 100000000) BEGIN8(x);
-    else if(x < 10000000000000000) { BEGIN8(x / 100000000); MIDDLE8(x % 100000000); }
-    else { BEGIN4(x / 10000000000000000); MIDDLE16(x % 10000000000000000); }
+    if(x < 100000000) Impl::toStringBegin8(x, p);
+    else if(x < 10000000000000000) {
+        uint32_t a = x / 100000000, b = x % 100000000;
+        Impl::toStringBegin8(a, p), Impl::toStringMiddle8(b, p);
+    } else {
+        uint64_t a = x / 10000000000000000, b = x % 10000000000000000;
+        Impl::toStringBegin4(a, p), Impl::toStringMiddle16(b, p);
+    }
     *p = 0;
     
 }
