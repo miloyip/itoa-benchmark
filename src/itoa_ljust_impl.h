@@ -1,3 +1,6 @@
+#ifndef ITOA_LJUST_IMPL_H
+#define ITOA_LJUST_IMPL_H
+
 /*===----------------------------------------------------------------------===*
  * itoa_ljust_impl.h - Fast integer to ascii decimal conversion
  *
@@ -88,7 +91,7 @@
 
 #include "itoa_ljust.h"
 
-#ifdef __GNUC__
+#if defined(__GNUC__) || defined(__clang__)
 #define likely(expr)   __builtin_expect(static_cast<bool>(expr), 1) /* Note 3 */
 #define unlikely(expr) __builtin_expect(static_cast<bool>(expr), 0)
 #else
@@ -116,10 +119,10 @@ constexpr u32 p10(u32 e) { return e ? 10*p10(e-1) : 1; }
  
 template<u32 E> u32 q10(u32 u); /* Note 6 */
 template<> u32 q10<0>(u32 u) { return u; }
-template<> u32 q10<2>(u32 u) { return ((u64)u      * 10486U) >> 20; } //u < 10^4
-template<> u32 q10<4>(u32 u) { return ((u64)++u   * 858993U) >> 33; } //u < 10^6
-template<> u32 q10<6>(u32 u) { return ((u64)++u * 70368744U) >> 46; } //u < 10^8
-template<> u32 q10<8>(u32 u) { return ((u64)u * 2882303762U) >> 58; } //u < 2^32
+template<> u32 q10<2>(u32 u) { return ((u64)u      *  5243U) >> 19; } // u < 10^4
+template<> u32 q10<4>(u32 u) { return ((1+(u64)u) * 858993U) >> 33; } // u < 10^6
+template<> u32 q10<6>(u32 u) { return ((1+(u64)u)* 8796093U) >> 43; } // u < 10^8
+template<> u32 q10<8>(u32 u) { return ((u64)u * 1441151881U) >> 57; } // u < 2^32
 template<u32 E> u64 q10(u64 u) { return u / p10(E); }
 
 template<typename T, u32 E, typename U = T> struct QR {
@@ -135,7 +138,6 @@ typename std::enable_if<not (E%2), char*>::type cvt(char* out, u32 u) {
     return cvt<E-2>(out+2, d.r);
 }
 template<> char* cvt<0>(char* out, u32) { *out = '\0'; return out; }
-
 template<u32 E>
 typename std::enable_if<E%2, char*>::type cvt(char* out, u32 u) {
     QR<u32,E-1> d{u};
@@ -158,16 +160,16 @@ char* to_dec(char* out, u64 u) { /* Note 7 */
     u32 low = static_cast<u32>(u);
     if (likely(low == u)) return to_dec(out, low);
     QR<u64,8> mid{u};
-    low = static_cast<u32>(mid.r);
     u32 mid32 = static_cast<u32>(mid.q);
     if (likely(mid32 == mid.q)) {
         out = to_dec(out, mid32);
+		return cvt<8>(out, static_cast<u32>(mid.r));
     } else {
         QR<u32,8,u64> d{mid.q};
         out = d.q < p10(2) ? cvt<1>(out, d.q) : cvt<3>(out, d.q);
         out = cvt<8>(out, d.r);
+		return cvt<8>(out, static_cast<u32>(mid.r));
     }
-    return cvt<8>(out, low);
 }
 
 template<typename T,
@@ -180,3 +182,5 @@ char* to_dec(char* out, T v) {
     return to_dec(out + (mask&1), u);
 }
 } // anonymous namespace
+
+#endif // ITOA_LJUST_IMPL.H
