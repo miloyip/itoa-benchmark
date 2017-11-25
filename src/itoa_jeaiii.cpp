@@ -2,6 +2,7 @@
 MIT License
 
 Copyright (c) 2017 James Edward Anhalt III (jeaiii)
+https://github.com/jeaiii/itoa
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -124,5 +125,5 @@ void u64toa_jeaiii(uint64_t n, char* b)
 void i64toa_jeaiii(int64_t i, char* b)
 {
     uint64_t n = i < 0 ? *b++ = '-', 0 - uint64_t(i) : i;
-    return u64toa_jeaiii(n, b);
+    u64toa_jeaiii(n, b);
 }
