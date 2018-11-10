@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <string.h>
+#include <cstdint>
 
 struct Test;
 typedef std::vector<const Test *> TestList;
