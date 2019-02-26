@@ -4,6 +4,7 @@
 #include <cstring>
 #include <exception>
 #include <limits>
+#include <string>
 #include <stdint.h>
 #include <stdlib.h>
 #include "resultfilename.h"
@@ -269,7 +270,10 @@ void BenchAll() {
 int main() {
     // sort tests
     TestList& tests = TestManager::Instance().GetTests();
-    std::sort(tests.begin(), tests.end());
+    std::sort(tests.begin(), tests.end(),
+              [](const Test* a, const Test* b) {
+                  return std::string{a->fname} < std::string{b->fname};
+              });
 
     VerifyAll();
     BenchAll();
