@@ -49,12 +49,19 @@ struct Traits<int64_t> {
 
 template <typename T>
 static void VerifyValue(T value, void(*f)(T, char*), void(*g)(T, char*), const char* fname, const char* gname) {
-    char buffer1[Traits<T>::kBufferSize];
-    char buffer2[Traits<T>::kBufferSize];
+    char buffer1[Traits<T>::kBufferSize] = {};
+    char buffer2[Traits<T>::kBufferSize] = {};
 
     f(value, buffer1);
     g(value, buffer2);
 
+    std::string str = std::to_string(value);
+    // yy_itoa will copy 2-byte at one time, and return the last to end pointer
+    // eg: yy_itoa(8) will return "80" and pointer to "0", for verification 
+    // we need to set null char explicitly. check the implementation
+    if (strcmp(gname, "yy") == 0) { 
+        buffer2[str.size()] = '\0'; 
+    }
     if (strcmp(buffer1, buffer2) != 0) {
         printf("\nError: %s -> %s, %s -> %s\n", fname, buffer1, gname, buffer2);
         throw std::exception();
